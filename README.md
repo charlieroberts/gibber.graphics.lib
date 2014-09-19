@@ -1,7 +1,7 @@
-gibber.lib
+gibber.graphics.lib
 ==========
 
-This library provides the graphics and audio capabilities of Gibber without the code editing environment.
+This library provides the 2D and 3D graphics capabilities of Gibber.
 
 ## Building (for development)
 
@@ -11,7 +11,7 @@ You can simply download the repo and skip straight to the usage section if you d
 2. Inside the top level of the repo, run `npm install` in the terminal.
 3. Run `gulp`. This is a build module that is installed in step 2.
 
-The build outputs a single UMD file, gibber.lib.js.
+The build outputs a two UMD file, gibber.graphics.lib.js and gibber.graphics.lib.min.js.
 
 ## Usage
 The library can be used with plain script tags, CommonJS or AMD style includes. Below is an example HTML file that plays a simple drum beat, bass line, and random melody.
@@ -20,28 +20,18 @@ The library can be used with plain script tags, CommonJS or AMD style includes. 
 <html>
 
 <head>
-  <script src='build/gibber.lib.js'></script>
+  <script src='build/gibber.graphics.lib.js'></script>
 </head>
 
 <body></body>
 
 <script>
 Gibber.init() // REQUIRED!
+Gibber.Graphics.init()
+Gibber.Graphics.resolution = 1 // use high res. lower values can result in lower cpu usage.
 
-// change root of global scale every other measure
-// this will affect both bass and lead parts
-Gibber.scale.root.seq( ['c4','eb4'], 2)
-
-// create bass monosynth and sequence 1/8 note octaves
-a = Mono('bass').note.seq( [0,7], 1/8 )
-
-// simple kick / snare drum pattern
-b = EDrums('xoxo')
-b.snare.snappy = 1
-
-// create lead synth and sequence with random notes/durations
-c = Mono('easyfx')
-  .note.seq( Rndi(0,12), [1/4,1/8,1/2,1,2].rnd( 1/8,4 ) )
+a = Gibber.Graphics.Geometry.Cube()
+a.spin(.0005)
 </script>
 
 </html>
@@ -50,11 +40,7 @@ c = Mono('easyfx')
 If you want to use CommonJS (node or browserify), just use the following to start things off (assuming you have the module installed):
 
 ```js
-Gibber = require( 'gibber.lib' )
+Gibber = require( 'gibber.graphics.lib' )
 Gibber.init()
+Gibber.Graphics.init()
 ``` 
-
-## Notes
-Right now only audio works, but I'll be adding interaction and graphics soon. Also note that `Drums` do not work because I haven't figured out resource management yet and `Drums` uses audio samples. However, `EDrums` (which uses synthesis) works fine. 
-
-I'd eventually like to have three separate builds: one for audio, one for graphics, and one for both.

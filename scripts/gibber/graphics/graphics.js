@@ -48,7 +48,7 @@ Graphics = {
   },
   
   init : function( mode, container, noThree ) {
-    console.log("INIT", mode, noThree )
+    //console.log("INIT", mode, noThree )
     this.canvas = document.createElement('div')//$( '<div>' )
     
     if( typeof noThree !== 'undefined' ) this.noThree = noThree
@@ -58,7 +58,8 @@ Graphics = {
         this.noThree = true
       }
     }
-    console.log( this.noThree, noThree )
+    
+    //console.log( this.noThree, noThree )
     if( this.noThree !== noThree ) {
       //Gibber.Environment.Message.post( 'Your browser does not support WebGL. 2D drawing will work, but 3D geometries and shaders are not supported.' )
     }
@@ -155,7 +156,7 @@ Graphics = {
   createScene : function( mode ) {		
     this.renderer = new Graphics.THREE.WebGLRenderer();
     
-    console.log( "THREE", $('#three') )
+    //console.log( "THREE", $('#three') )
     
     $( '#three' ).appendChild( this.renderer.domElement )
     
