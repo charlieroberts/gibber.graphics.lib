@@ -1,4 +1,4 @@
-(function() {
+module.exports = function( Gibber, Graphics ) {
 
 "use strict"
     
@@ -61,8 +61,8 @@ var processArgs = function( args, type, shape ) {
 //     "gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
 //   "}"
 // ].join("\n")
-
-var Shaders = Gibber.Graphics.GibberShaders = {
+  
+var Shaders = {
   Stripes : function() {
     var frag = [
     "varying vec2 p;",
@@ -206,12 +206,12 @@ var Shaders = Gibber.Graphics.GibberShaders = {
 }
 
 
+return Shaders
 
-
-for( var key in Shaders ) {
-  window[ key ] = Shaders[ key ]
-}
+// for( var key in Shaders ) {
+//   window[ key ] = Shaders[ key ]
+// }
 
 //$.extend( window, Gibber.Graphics.Geometry )
 
-})()
+}

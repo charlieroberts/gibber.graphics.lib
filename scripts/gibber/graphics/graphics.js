@@ -16,35 +16,35 @@ Graphics = {
   THREE: require('../../external/three/three.min'),
   
   load : function() {
-    $script( [ 'external/three/three.min', 'external/three/stats.min', 'gibber/graphics/geometry','gibber/graphics/2d', /*'gibber/graphics/shapes2d'*/ ], 'graphics', function() {
-      $script([
-        'external/three/postprocessing/EffectComposer',
-        'external/three/postprocessing/RenderPass',
-        'external/three/postprocessing/MaskPass',
-        'external/three/postprocessing/ShaderPass',
-        'external/three/postprocessing/CopyShader',
-        'external/three/postprocessing/shaders/DotScreenShader',
-        'external/three/postprocessing/DotScreenPass',
-        'external/three/postprocessing/FilmPass',
-        'external/three/postprocessing/shaders/FilmShader',      
-        'external/three/postprocessing/shaders/KaleidoShader',
-        'external/three/postprocessing/shaders/EdgeShader',
-        'external/three/postprocessing/shaders/FocusShader',      
-        'external/three/postprocessing/shaders/ShaderGodRays',      
-        'external/three/postprocessing/shaders/BleachBypassShader',
-        'external/three/postprocessing/shaders/ColorifyShader',
-      ], 'postprocessing', function() {
-        $script([
-          'gibber/graphics/postprocessing',
-          'gibber/graphics/shader', 
-          'gibber/graphics/gibber_shaders',
-          'gibber/graphics/video'
-        ], function() {
-          Graphics.PostProcessing.init()
-          window.Graphics = Graphics
-        })
-      })
-    })
+    //$script( [ 'external/three/three.min', 'external/three/stats.min', 'gibber/graphics/geometry','gibber/graphics/2d', /*'gibber/graphics/shapes2d'*/ ], 'graphics', function() {
+    //   $script([
+    //     'external/three/postprocessing/EffectComposer',
+    //     'external/three/postprocessing/RenderPass',
+    //     'external/three/postprocessing/MaskPass',
+    //     'external/three/postprocessing/ShaderPass',
+    //     'external/three/postprocessing/CopyShader',
+    //     'external/three/postprocessing/shaders/DotScreenShader',
+    //     'external/three/postprocessing/DotScreenPass',
+    //     'external/three/postprocessing/FilmPass',
+    //     'external/three/postprocessing/shaders/FilmShader',      
+    //     'external/three/postprocessing/shaders/KaleidoShader',
+    //     'external/three/postprocessing/shaders/EdgeShader',
+    //     'external/three/postprocessing/shaders/FocusShader',      
+    //     'external/three/postprocessing/shaders/ShaderGodRays',      
+    //     'external/three/postprocessing/shaders/BleachBypassShader',
+    //     'external/three/postprocessing/shaders/ColorifyShader',
+    //   ], 'postprocessing', function() {
+    //     $script([
+    //       'gibber/graphics/postprocessing',
+    //       'gibber/graphics/shader', 
+    //       'gibber/graphics/gibber_shaders',
+    //       'gibber/graphics/video'
+    //     ], function() {
+    //       Graphics.PostProcessing.init()
+    //       window.Graphics = Graphics
+    //     })
+    //   })
+    // })
   },
   
   init : function( mode, container, noThree ) {
@@ -354,7 +354,30 @@ Graphics = {
 
 module.exports = function( Gibber ) { 
   Graphics.Geometry = require( './geometry' )( Gibber, Graphics, Graphics.THREE )
-  Graphics.TwoD = require( './2d' )( Gibber, Graphics )  
+  Graphics.TwoD = require( './2d' )( Gibber, Graphics )
+  
+  require( '../../external/three/postprocessing/EffectComposer' )
+  require( '../../external/three/postprocessing/RenderPass' )
+  require( '../../external/three/postprocessing/MaskPass' )
+  require( '../../external/three/postprocessing/ShaderPass' )
+  require( '../../external/three/postprocessing/CopyShader' )
+  require( '../../external/three/postprocessing/shaders/DotScreenShader' )
+  require( '../../external/three/postprocessing/DotScreenPass' )
+  require( '../../external/three/postprocessing/FilmPass' )
+  require( '../../external/three/postprocessing/shaders/FilmShader' )
+  require( '../../external/three/postprocessing/shaders/KaleidoShader' )
+  require( '../../external/three/postprocessing/shaders/EdgeShader' )
+  require( '../../external/three/postprocessing/shaders/FocusShader' )
+  require( '../../external/three/postprocessing/shaders/ShaderGodRays' )
+  require( '../../external/three/postprocessing/shaders/BleachBypassShader' )
+  require( '../../external/three/postprocessing/shaders/ColorifyShader' )
+  
+  Graphics.PostProcessing = require( './postprocessing' )( Gibber, Graphics )
+  Graphics.PostProcessing.init()
+  Graphics.Shaders = require( './shader' )( Gibber, Graphics )
+  Graphics.GibberShaders = require( './gibber_shaders' )( Gibber, Graphics )
+  Graphics.Video = require( './video' )( Gibber, Graphics )
+    
   return Graphics; 
 }
 

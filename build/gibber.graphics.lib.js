@@ -1,8 +1,1361 @@
 !function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Gibber=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+/**
+ * @author alteredq / http://alteredqualia.com/
+ *
+ * Full-screen textured quad shader
+ */
+
+THREE.CopyShader = {
+
+	uniforms: {
+
+		"tDiffuse": { type: "t", value: null },
+		"opacity":  { type: "f", value: 1.0 }
+
+	},
+
+	vertexShader: [
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vUv = uv;",
+			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+		"}"
+
+	].join("\n"),
+
+	fragmentShader: [
+
+		"uniform float opacity;",
+
+		"uniform sampler2D tDiffuse;",
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vec4 texel = texture2D( tDiffuse, vUv );",
+			"gl_FragColor = opacity * texel;",
+
+		"}"
+
+	].join("\n")
+
+};
+
+},{}],2:[function(_dereq_,module,exports){
+/**
+ * @author alteredq / http://alteredqualia.com/
+ */
+
+THREE.DotScreenPass = function ( center, angle, scale, mix ) {
+
+	if ( THREE.DotScreenShader === undefined )
+		console.error( "THREE.DotScreenPass relies on THREE.DotScreenShader" );
+
+	var shader = THREE.DotScreenShader;
+
+	this.uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+
+	if ( center !== undefined ) this.uniforms[ "center" ].value.copy( center );
+	if ( angle !== undefined ) this.uniforms[ "angle"].value = angle;
+	if ( scale !== undefined ) this.uniforms[ "scale"].value = scale;
+	if ( mix !== undefined )	this.uniforms[ "mix" ].value   = mix;
+
+	this.material = new THREE.ShaderMaterial( {
+
+		uniforms: this.uniforms,
+		vertexShader: shader.vertexShader,
+		fragmentShader: shader.fragmentShader
+
+	} );
+
+	this.enabled = true;
+	this.renderToScreen = false;
+	this.needsSwap = true;
+
+};
+
+THREE.DotScreenPass.prototype = {
+
+	render: function ( renderer, writeBuffer, readBuffer, delta ) {
+
+		this.uniforms[ "tDiffuse" ].value = readBuffer;
+		this.uniforms[ "tSize" ].value.set( readBuffer.width, readBuffer.height );
+
+		THREE.EffectComposer.quad.material = this.material;
+
+		if ( this.renderToScreen ) {
+
+			renderer.render( THREE.EffectComposer.scene, THREE.EffectComposer.camera );
+
+		} else {
+
+			renderer.render( THREE.EffectComposer.scene, THREE.EffectComposer.camera, writeBuffer, false );
+
+		}
+
+	}
+
+};
+
+},{}],3:[function(_dereq_,module,exports){
+/**
+ * @author alteredq / http://alteredqualia.com/
+ */
+
+THREE.EffectComposer = function ( renderer, renderTarget ) {
+
+	this.renderer = renderer;
+
+	if ( renderTarget === undefined ) {
+
+		var width = window.innerWidth || 1;
+		var height = window.innerHeight || 1;
+		var parameters = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat, stencilBuffer: false };
+
+		renderTarget = new THREE.WebGLRenderTarget( width, height, parameters );
+
+	}
+
+	this.renderTarget1 = renderTarget;
+	this.renderTarget2 = renderTarget.clone();
+
+	this.writeBuffer = this.renderTarget1;
+	this.readBuffer = this.renderTarget2;
+
+	this.passes = [];
+
+	if ( THREE.CopyShader === undefined )
+		console.error( "THREE.EffectComposer relies on THREE.CopyShader" );
+
+	this.copyPass = new THREE.ShaderPass( THREE.CopyShader );
+
+};
+
+THREE.EffectComposer.prototype = {
+
+	swapBuffers: function() {
+
+		var tmp = this.readBuffer;
+		this.readBuffer = this.writeBuffer;
+		this.writeBuffer = tmp;
+
+	},
+
+	addPass: function ( pass ) {
+
+		this.passes.push( pass );
+
+	},
+
+	insertPass: function ( pass, index ) {
+
+		this.passes.splice( index, 0, pass );
+
+	},
+
+	render: function ( delta ) {
+
+		this.writeBuffer = this.renderTarget1;
+		this.readBuffer = this.renderTarget2;
+
+		var maskActive = false;
+
+		var pass, i, il = this.passes.length;
+
+		for ( i = 0; i < il; i ++ ) {
+
+			pass = this.passes[ i ];
+
+			if ( !pass.enabled ) continue;
+
+			pass.render( this.renderer, this.writeBuffer, this.readBuffer, delta, maskActive );
+
+			if ( pass.needsSwap ) {
+
+				if ( maskActive ) {
+
+					var context = this.renderer.context;
+
+					context.stencilFunc( context.NOTEQUAL, 1, 0xffffffff );
+
+					this.copyPass.render( this.renderer, this.writeBuffer, this.readBuffer, delta );
+
+					context.stencilFunc( context.EQUAL, 1, 0xffffffff );
+
+				}
+
+				this.swapBuffers();
+
+			}
+
+			if ( pass instanceof THREE.MaskPass ) {
+
+				maskActive = true;
+
+			} else if ( pass instanceof THREE.ClearMaskPass ) {
+
+				maskActive = false;
+
+			}
+
+		}
+
+	},
+
+	reset: function ( renderTarget ) {
+
+		if ( renderTarget === undefined ) {
+
+			renderTarget = this.renderTarget1.clone();
+
+			renderTarget.width = window.innerWidth;
+			renderTarget.height = window.innerHeight;
+
+		}
+
+		this.renderTarget1 = renderTarget;
+		this.renderTarget2 = renderTarget.clone();
+
+		this.writeBuffer = this.renderTarget1;
+		this.readBuffer = this.renderTarget2;
+
+	},
+
+	setSize: function ( width, height ) {
+
+		var renderTarget = this.renderTarget1.clone();
+
+		renderTarget.width = width;
+		renderTarget.height = height;
+
+		this.reset( renderTarget );
+
+	}
+
+};
+
+// shared ortho camera
+
+THREE.EffectComposer.camera = new THREE.OrthographicCamera( -1, 1, 1, -1, 0, 1 );
+
+THREE.EffectComposer.quad = new THREE.Mesh( new THREE.PlaneGeometry( 2, 2 ), null );
+
+THREE.EffectComposer.scene = new THREE.Scene();
+THREE.EffectComposer.scene.add( THREE.EffectComposer.quad );
+
+},{}],4:[function(_dereq_,module,exports){
+/**
+ * @author alteredq / http://alteredqualia.com/
+ */
+
+THREE.FilmPass = function ( noiseIntensity, scanlinesIntensity, scanlinesCount, grayscale ) {
+
+	if ( THREE.FilmShader === undefined )
+		console.error( "THREE.FilmPass relies on THREE.FilmShader" );
+
+	var shader = THREE.FilmShader;
+
+	this.uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+
+	this.material = new THREE.ShaderMaterial( {
+
+		uniforms: this.uniforms,
+		vertexShader: shader.vertexShader,
+		fragmentShader: shader.fragmentShader
+
+	} );
+
+	if ( grayscale !== undefined )	this.uniforms.grayscale.value = grayscale;
+	if ( noiseIntensity !== undefined ) this.uniforms.nIntensity.value = noiseIntensity;
+	if ( scanlinesIntensity !== undefined ) this.uniforms.sIntensity.value = scanlinesIntensity;
+	if ( scanlinesCount !== undefined ) this.uniforms.sCount.value = scanlinesCount;
+
+	this.enabled = true;
+	this.renderToScreen = false;
+	this.needsSwap = true;
+
+};
+
+THREE.FilmPass.prototype = {
+
+	render: function ( renderer, writeBuffer, readBuffer, delta ) {
+
+		this.uniforms[ "tDiffuse" ].value = readBuffer;
+		this.uniforms[ "time" ].value += delta;
+
+		THREE.EffectComposer.quad.material = this.material;
+
+		if ( this.renderToScreen ) {
+
+			renderer.render( THREE.EffectComposer.scene, THREE.EffectComposer.camera );
+
+		} else {
+
+			renderer.render( THREE.EffectComposer.scene, THREE.EffectComposer.camera, writeBuffer, false );
+
+		}
+
+	}
+
+};
+
+},{}],5:[function(_dereq_,module,exports){
+/**
+ * @author alteredq / http://alteredqualia.com/
+ */
+
+THREE.MaskPass = function ( scene, camera ) {
+
+	this.scene = scene;
+	this.camera = camera;
+
+	this.enabled = true;
+	this.clear = true;
+	this.needsSwap = false;
+
+	this.inverse = false;
+
+};
+
+THREE.MaskPass.prototype = {
+
+	render: function ( renderer, writeBuffer, readBuffer, delta ) {
+
+		var context = renderer.context;
+
+		// don't update color or depth
+
+		context.colorMask( false, false, false, false );
+		context.depthMask( false );
+
+		// set up stencil
+
+		var writeValue, clearValue;
+
+		if ( this.inverse ) {
+
+			writeValue = 0;
+			clearValue = 1;
+
+		} else {
+
+			writeValue = 1;
+			clearValue = 0;
+
+		}
+
+		context.enable( context.STENCIL_TEST );
+		context.stencilOp( context.REPLACE, context.REPLACE, context.REPLACE );
+		context.stencilFunc( context.ALWAYS, writeValue, 0xffffffff );
+		context.clearStencil( clearValue );
+
+		// draw into the stencil buffer
+
+		renderer.render( this.scene, this.camera, readBuffer, this.clear );
+		renderer.render( this.scene, this.camera, writeBuffer, this.clear );
+
+		// re-enable update of color and depth
+
+		context.colorMask( true, true, true, true );
+		context.depthMask( true );
+
+		// only render where stencil is set to 1
+
+		context.stencilFunc( context.EQUAL, 1, 0xffffffff );  // draw if == 1
+		context.stencilOp( context.KEEP, context.KEEP, context.KEEP );
+
+	}
+
+};
+
+
+THREE.ClearMaskPass = function () {
+
+	this.enabled = true;
+
+};
+
+THREE.ClearMaskPass.prototype = {
+
+	render: function ( renderer, writeBuffer, readBuffer, delta ) {
+
+		var context = renderer.context;
+
+		context.disable( context.STENCIL_TEST );
+
+	}
+
+};
+
+},{}],6:[function(_dereq_,module,exports){
+/**
+ * @author alteredq / http://alteredqualia.com/
+ */
+
+THREE.RenderPass = function ( scene, camera, overrideMaterial, clearColor, clearAlpha ) {
+
+	this.scene = scene;
+	this.camera = camera;
+
+	this.overrideMaterial = overrideMaterial;
+
+	this.clearColor = clearColor;
+	this.clearAlpha = ( clearAlpha !== undefined ) ? clearAlpha : 1;
+
+	this.oldClearColor = new THREE.Color();
+	this.oldClearAlpha = 1;
+
+	this.enabled = true;
+	this.clear = true;
+	this.needsSwap = false;
+
+};
+
+THREE.RenderPass.prototype = {
+
+	render: function ( renderer, writeBuffer, readBuffer, delta ) {
+
+		this.scene.overrideMaterial = this.overrideMaterial;
+
+		if ( this.clearColor ) {
+
+			this.oldClearColor.copy( renderer.getClearColor() );
+			this.oldClearAlpha = renderer.getClearAlpha();
+
+			renderer.setClearColor( this.clearColor, this.clearAlpha );
+
+		}
+
+		renderer.render( this.scene, this.camera, readBuffer, this.clear );
+
+		if ( this.clearColor ) {
+
+			renderer.setClearColor( this.oldClearColor, this.oldClearAlpha );
+
+		}
+
+		this.scene.overrideMaterial = null;
+
+	}
+
+};
+
+},{}],7:[function(_dereq_,module,exports){
+/**
+ * @author alteredq / http://alteredqualia.com/
+ */
+
+THREE.ShaderPass = function ( shader, textureID ) {
+
+	this.textureID = ( textureID !== undefined ) ? textureID : "tDiffuse";
+
+	this.uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+
+	this.material = new THREE.ShaderMaterial( {
+
+		uniforms: this.uniforms,
+		vertexShader: shader.vertexShader,
+		fragmentShader: shader.fragmentShader
+
+	} );
+
+	this.renderToScreen = false;
+
+	this.enabled = true;
+	this.needsSwap = true;
+	this.clear = false;
+
+};
+
+THREE.ShaderPass.prototype = {
+
+	render: function ( renderer, writeBuffer, readBuffer, delta ) {
+
+		if ( this.uniforms[ this.textureID ] ) {
+
+			this.uniforms[ this.textureID ].value = readBuffer;
+
+		}
+
+		THREE.EffectComposer.quad.material = this.material;
+
+		if ( this.renderToScreen ) {
+
+			renderer.render( THREE.EffectComposer.scene, THREE.EffectComposer.camera );
+
+		} else {
+
+			renderer.render( THREE.EffectComposer.scene, THREE.EffectComposer.camera, writeBuffer, this.clear );
+
+		}
+
+	}
+
+};
+
+},{}],8:[function(_dereq_,module,exports){
+/**
+ * @author alteredq / http://alteredqualia.com/
+ *
+ * Bleach bypass shader [http://en.wikipedia.org/wiki/Bleach_bypass]
+ * - based on Nvidia example
+ * http://developer.download.nvidia.com/shaderlibrary/webpages/shader_library.html#post_bleach_bypass
+ */
+
+THREE.BleachBypassShader = {
+
+	uniforms: {
+
+		"tDiffuse": { type: "t", value: null },
+		"opacity":  { type: "f", value: 1.0 }
+
+	},
+
+	vertexShader: [
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vUv = uv;",
+			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+		"}"
+
+	].join("\n"),
+
+	fragmentShader: [
+
+		"uniform float opacity;",
+
+		"uniform sampler2D tDiffuse;",
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vec4 base = texture2D( tDiffuse, vUv );",
+
+			"vec3 lumCoeff = vec3( 0.25, 0.65, 0.1 );",
+			"float lum = dot( lumCoeff, base.rgb );",
+			"vec3 blend = vec3( lum );",
+
+			"float L = min( 1.0, max( 0.0, 10.0 * ( lum - 0.45 ) ) );",
+
+			"vec3 result1 = 2.0 * base.rgb * blend;",
+			"vec3 result2 = 1.0 - 2.0 * ( 1.0 - blend ) * ( 1.0 - base.rgb );",
+
+			"vec3 newColor = mix( result1, result2, L );",
+
+			"float A2 = opacity * base.a;",
+			"vec3 mixRGB = A2 * newColor.rgb;",
+			"mixRGB += ( ( 1.0 - A2 ) * base.rgb );",
+
+			"gl_FragColor = vec4( mixRGB, base.a );",
+
+		"}"
+
+	].join("\n")
+
+};
+
+},{}],9:[function(_dereq_,module,exports){
+/**
+ * @author alteredq / http://alteredqualia.com/
+ *
+ * Colorify shader
+ */
+
+THREE.ColorifyShader = {
+
+	uniforms: {
+
+		"tDiffuse": { type: "t", value: null },
+		"color":    { type: "c", value: new THREE.Color( 0xffffff ) }
+
+	},
+
+	vertexShader: [
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vUv = uv;",
+			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+		"}"
+
+	].join("\n"),
+
+	fragmentShader: [
+
+		"uniform vec3 color;",
+		"uniform sampler2D tDiffuse;",
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vec4 texel = texture2D( tDiffuse, vUv );",
+
+			"vec3 luma = vec3( 0.299, 0.587, 0.114 );",
+			"float v = dot( texel.xyz, luma );",
+
+			"gl_FragColor = vec4( v * color, texel.w );",
+
+		"}"
+
+	].join("\n")
+
+};
+
+},{}],10:[function(_dereq_,module,exports){
+/**
+ * @author alteredq / http://alteredqualia.com/
+ *
+ * Dot screen shader
+ * based on glfx.js sepia shader
+ * https://github.com/evanw/glfx.js
+ */
+
+THREE.DotScreenShader = {
+
+	uniforms: {
+
+		"tDiffuse": { type: "t", value: null },
+		"tSize":    { type: "v2", value: new THREE.Vector2( 256, 256 ) },
+		"center":   { type: "v2", value: new THREE.Vector2( 0.5, 0.5 ) },
+		"angle":    { type: "f", value: 1.57 },
+		"scale":    { type: "f", value: 1.0 }
+
+	},
+
+	vertexShader: [
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vUv = uv;",
+			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+		"}"
+
+	].join("\n"),
+
+	fragmentShader: [
+
+		"uniform vec2 center;",
+		"uniform float angle;",
+		"uniform float scale;",
+		"uniform vec2 tSize;",
+
+		"uniform sampler2D tDiffuse;",
+
+		"varying vec2 vUv;",
+
+		"float pattern() {",
+
+			"float s = sin( angle ), c = cos( angle );",
+
+			"vec2 tex = vUv * tSize - center;",
+			"vec2 point = vec2( c * tex.x - s * tex.y, s * tex.x + c * tex.y ) * scale;",
+
+			"return ( sin( point.x ) * sin( point.y ) ) * 4.0;",
+
+		"}",
+
+		"void main() {",
+
+			"vec4 color = texture2D( tDiffuse, vUv );",
+
+			"float average = ( color.r + color.g + color.b ) / 3.0;",
+
+			"gl_FragColor = vec4( vec3( average * 10.0 - 5.0 + pattern() ), color.a );",
+
+		"}"
+
+	].join("\n")
+
+};
+
+},{}],11:[function(_dereq_,module,exports){
+/**
+ * @author zz85 / https://github.com/zz85 | https://www.lab4games.net/zz85/blog
+ *
+ * Edge Detection Shader using Frei-Chen filter
+ * Based on http://rastergrid.com/blog/2011/01/frei-chen-edge-detector
+ *
+ * aspect: vec2 of (1/width, 1/height)
+ */
+
+THREE.EdgeShader = {
+
+	uniforms: {
+
+		"tDiffuse": { type: "t", value: null },
+		"aspect":    { type: "v2", value: new THREE.Vector2( 512, 512 ) },
+	},
+
+	vertexShader: [
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vUv = uv;",
+			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+		"}"
+
+	].join("\n"),
+
+	fragmentShader: [
+
+		"uniform sampler2D tDiffuse;",
+		"varying vec2 vUv;",
+
+		"uniform vec2 aspect;",
+
+		"vec2 texel = vec2(1.0 / aspect.x, 1.0 / aspect.y);",
+
+
+		"mat3 G[9];",
+
+		// hard coded matrix values!!!! as suggested in https://github.com/neilmendoza/ofxPostProcessing/blob/master/src/EdgePass.cpp#L45
+
+		"const mat3 g0 = mat3( 0.3535533845424652, 0, -0.3535533845424652, 0.5, 0, -0.5, 0.3535533845424652, 0, -0.3535533845424652 );",
+		"const mat3 g1 = mat3( 0.3535533845424652, 0.5, 0.3535533845424652, 0, 0, 0, -0.3535533845424652, -0.5, -0.3535533845424652 );",
+		"const mat3 g2 = mat3( 0, 0.3535533845424652, -0.5, -0.3535533845424652, 0, 0.3535533845424652, 0.5, -0.3535533845424652, 0 );",
+		"const mat3 g3 = mat3( 0.5, -0.3535533845424652, 0, -0.3535533845424652, 0, 0.3535533845424652, 0, 0.3535533845424652, -0.5 );",
+		"const mat3 g4 = mat3( 0, -0.5, 0, 0.5, 0, 0.5, 0, -0.5, 0 );",
+		"const mat3 g5 = mat3( -0.5, 0, 0.5, 0, 0, 0, 0.5, 0, -0.5 );",
+		"const mat3 g6 = mat3( 0.1666666716337204, -0.3333333432674408, 0.1666666716337204, -0.3333333432674408, 0.6666666865348816, -0.3333333432674408, 0.1666666716337204, -0.3333333432674408, 0.1666666716337204 );",
+		"const mat3 g7 = mat3( -0.3333333432674408, 0.1666666716337204, -0.3333333432674408, 0.1666666716337204, 0.6666666865348816, 0.1666666716337204, -0.3333333432674408, 0.1666666716337204, -0.3333333432674408 );",
+		"const mat3 g8 = mat3( 0.3333333432674408, 0.3333333432674408, 0.3333333432674408, 0.3333333432674408, 0.3333333432674408, 0.3333333432674408, 0.3333333432674408, 0.3333333432674408, 0.3333333432674408 );",
+
+		"void main(void)",
+		"{",
+
+			"G[0] = g0,",
+			"G[1] = g1,",
+			"G[2] = g2,",
+			"G[3] = g3,",
+			"G[4] = g4,",
+			"G[5] = g5,",
+			"G[6] = g6,",
+			"G[7] = g7,",
+			"G[8] = g8;",
+
+			"mat3 I;",
+			"float cnv[9];",
+			"vec3 sample;",
+
+			/* fetch the 3x3 neighbourhood and use the RGB vector's length as intensity value */
+			"for (float i=0.0; i<3.0; i++) {",
+				"for (float j=0.0; j<3.0; j++) {",
+					"sample = texture2D(tDiffuse, vUv + texel * vec2(i-1.0,j-1.0) ).rgb;",
+					"I[int(i)][int(j)] = length(sample);",
+				"}",
+			"}",
+
+			/* calculate the convolution values for all the masks */
+			"for (int i=0; i<9; i++) {",
+				"float dp3 = dot(G[i][0], I[0]) + dot(G[i][1], I[1]) + dot(G[i][2], I[2]);",
+				"cnv[i] = dp3 * dp3;",
+			"}",
+
+			"float M = (cnv[0] + cnv[1]) + (cnv[2] + cnv[3]);",
+			"float S = (cnv[4] + cnv[5]) + (cnv[6] + cnv[7]) + (cnv[8] + M);",
+
+			"gl_FragColor = vec4(vec3(sqrt(M/S)), 1.0);",
+		"}",
+
+	].join("\n")
+};
+
+},{}],12:[function(_dereq_,module,exports){
+/**
+ * @author alteredq / http://alteredqualia.com/
+ *
+ * Film grain & scanlines shader
+ *
+ * - ported from HLSL to WebGL / GLSL
+ * http://www.truevision3d.com/forums/showcase/staticnoise_colorblackwhite_scanline_shaders-t18698.0.html
+ *
+ * Screen Space Static Postprocessor
+ *
+ * Produces an analogue noise overlay similar to a film grain / TV static
+ *
+ * Original implementation and noise algorithm
+ * Pat 'Hawthorne' Shearon
+ *
+ * Optimized scanlines + noise version with intensity scaling
+ * Georg 'Leviathan' Steinrohder
+ *
+ * This version is provided under a Creative Commons Attribution 3.0 License
+ * http://creativecommons.org/licenses/by/3.0/
+ */
+
+THREE.FilmShader = {
+
+	uniforms: {
+
+		"tDiffuse":   { type: "t", value: null },
+		"time":       { type: "f", value: 0.0 },
+		"nIntensity": { type: "f", value: 0.5 },
+		"sIntensity": { type: "f", value: 0.05 },
+		"sCount":     { type: "f", value: 4096 },
+		"grayscale":  { type: "i", value: 1 }
+
+	},
+
+	vertexShader: [
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vUv = uv;",
+			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+		"}"
+
+	].join("\n"),
+
+	fragmentShader: [
+
+		// control parameter
+		"uniform float time;",
+
+		"uniform bool grayscale;",
+
+		// noise effect intensity value (0 = no effect, 1 = full effect)
+		"uniform float nIntensity;",
+
+		// scanlines effect intensity value (0 = no effect, 1 = full effect)
+		"uniform float sIntensity;",
+
+		// scanlines effect count value (0 = no effect, 4096 = full effect)
+		"uniform float sCount;",
+
+		"uniform sampler2D tDiffuse;",
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			// sample the source
+			"vec4 cTextureScreen = texture2D( tDiffuse, vUv );",
+
+			// make some noise
+			"float x = vUv.x * vUv.y * time *  1000.0;",
+			"x = mod( x, 13.0 ) * mod( x, 123.0 );",
+			"float dx = mod( x, 0.01 );",
+
+			// add noise
+			"vec3 cResult = cTextureScreen.rgb + cTextureScreen.rgb * clamp( 0.1 + dx * 100.0, 0.0, 1.0 );",
+
+			// get us a sine and cosine
+			"vec2 sc = vec2( sin( vUv.y * sCount ), cos( vUv.y * sCount ) );",
+
+			// add scanlines
+			"cResult += cTextureScreen.rgb * vec3( sc.x, sc.y, sc.x ) * sIntensity;",
+
+			// interpolate between source and result by intensity
+			"cResult = cTextureScreen.rgb + clamp( nIntensity, 0.0,1.0 ) * ( cResult - cTextureScreen.rgb );",
+
+			// convert to grayscale if desired
+			"if( grayscale ) {",
+
+				"cResult = vec3( cResult.r * 0.3 + cResult.g * 0.59 + cResult.b * 0.11 );",
+
+			"}",
+
+			"gl_FragColor =  vec4( cResult, cTextureScreen.a );",
+
+		"}"
+
+	].join("\n")
+
+};
+
+},{}],13:[function(_dereq_,module,exports){
+/**
+ * @author alteredq / http://alteredqualia.com/
+ *
+ * Focus shader
+ * based on PaintEffect postprocess from ro.me
+ * http://code.google.com/p/3-dreams-of-black/source/browse/deploy/js/effects/PaintEffect.js
+ */
+
+THREE.FocusShader = {
+
+	uniforms : {
+
+		"tDiffuse":       { type: "t", value: null },
+		"screenWidth":    { type: "f", value: 1024 },
+		"screenHeight":   { type: "f", value: 1024 },
+		"sampleDistance": { type: "f", value: 0.94 },
+		"waveFactor":     { type: "f", value: 0.00125 }
+
+	},
+
+	vertexShader: [
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vUv = uv;",
+			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+		"}"
+
+	].join("\n"),
+
+	fragmentShader: [
+
+		"uniform float screenWidth;",
+		"uniform float screenHeight;",
+		"uniform float sampleDistance;",
+		"uniform float waveFactor;",
+
+		"uniform sampler2D tDiffuse;",
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vec4 color, org, tmp, add;",
+			"float sample_dist, f;",
+			"vec2 vin;",
+			"vec2 uv = vUv;",
+
+			"add = color = org = texture2D( tDiffuse, uv );",
+
+			"vin = ( uv - vec2( 0.5 ) ) * vec2( 1.4 );",
+			"sample_dist = dot( vin, vin ) * 2.0;",
+
+			"f = ( waveFactor * 100.0 + sample_dist ) * sampleDistance * 4.0;",
+
+			"vec2 sampleSize = vec2(  1.0 / screenWidth, 1.0 / screenHeight ) * vec2( f );",
+
+			"add += tmp = texture2D( tDiffuse, uv + vec2( 0.111964, 0.993712 ) * sampleSize );",
+			"if( tmp.b < color.b ) color = tmp;",
+
+			"add += tmp = texture2D( tDiffuse, uv + vec2( 0.846724, 0.532032 ) * sampleSize );",
+			"if( tmp.b < color.b ) color = tmp;",
+
+			"add += tmp = texture2D( tDiffuse, uv + vec2( 0.943883, -0.330279 ) * sampleSize );",
+			"if( tmp.b < color.b ) color = tmp;",
+
+			"add += tmp = texture2D( tDiffuse, uv + vec2( 0.330279, -0.943883 ) * sampleSize );",
+			"if( tmp.b < color.b ) color = tmp;",
+
+			"add += tmp = texture2D( tDiffuse, uv + vec2( -0.532032, -0.846724 ) * sampleSize );",
+			"if( tmp.b < color.b ) color = tmp;",
+
+			"add += tmp = texture2D( tDiffuse, uv + vec2( -0.993712, -0.111964 ) * sampleSize );",
+			"if( tmp.b < color.b ) color = tmp;",
+
+			"add += tmp = texture2D( tDiffuse, uv + vec2( -0.707107, 0.707107 ) * sampleSize );",
+			"if( tmp.b < color.b ) color = tmp;",
+
+			"color = color * vec4( 2.0 ) - ( add / vec4( 8.0 ) );",
+			"color = color + ( add / vec4( 8.0 ) - color ) * ( vec4( 1.0 ) - vec4( sample_dist * 0.5 ) );",
+
+			"gl_FragColor = vec4( color.rgb * color.rgb * vec3( 0.95 ) + color.rgb, 1.0 );",
+
+		"}"
+
+
+	].join("\n")
+};
+
+},{}],14:[function(_dereq_,module,exports){
+/**
+ * @author felixturner / http://airtight.cc/
+ *
+ * Kaleidoscope Shader
+ * Radial reflection around center point
+ * Ported from: http://pixelshaders.com/editor/
+ * by Toby Schachman / http://tobyschachman.com/
+ *
+ * sides: number of reflections
+ * angle: initial angle in radians
+ */
+
+THREE.KaleidoShader = {
+
+	uniforms: {
+
+		"tDiffuse": { type: "t", value: null },
+		"sides":    { type: "f", value: 6.0 },
+		"angle":    { type: "f", value: 0.0 }
+
+	},
+
+	vertexShader: [
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vUv = uv;",
+			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+		"}"
+
+	].join("\n"),
+
+	fragmentShader: [
+
+		"uniform sampler2D tDiffuse;",
+		"uniform float sides;",
+		"uniform float angle;",
+		
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vec2 p = vUv - 0.5;",
+			"float r = length(p);",
+			"float a = atan(p.y, p.x) + angle;",
+			"float tau = 2. * 3.1416 ;",
+			"a = mod(a, tau/sides);",
+			"a = abs(a - tau/sides/2.) ;",
+			"p = r * vec2(cos(a), sin(a));",
+			"vec4 color = texture2D(tDiffuse, p + 0.5);",
+			"gl_FragColor = color;",
+
+		"}"
+
+	].join("\n")
+
+};
+
+},{}],15:[function(_dereq_,module,exports){
+/**
+ * @author huwb / http://huwbowles.com/
+ *
+ * God-rays (crepuscular rays)
+ *
+ * Similar implementation to the one used by Crytek for CryEngine 2 [Sousa2008].
+ * Blurs a mask generated from the depth map along radial lines emanating from the light
+ * source. The blur repeatedly applies a blur filter of increasing support but constant
+ * sample count to produce a blur filter with large support.
+ *
+ * My implementation performs 3 passes, similar to the implementation from Sousa. I found
+ * just 6 samples per pass produced acceptible results. The blur is applied three times,
+ * with decreasing filter support. The result is equivalent to a single pass with
+ * 6*6*6 = 216 samples.
+ *
+ * References:
+ *
+ * Sousa2008 - Crysis Next Gen Effects, GDC2008, http://www.crytek.com/sites/default/files/GDC08_SousaT_CrysisEffects.ppt
+ */
+
+THREE.ShaderGodRays = {
+
+	/**
+	 * The god-ray generation shader.
+	 *
+	 * First pass:
+	 *
+	 * The input is the depth map. I found that the output from the
+	 * THREE.MeshDepthMaterial material was directly suitable without
+	 * requiring any treatment whatsoever.
+	 *
+	 * The depth map is blurred along radial lines towards the "sun". The
+	 * output is written to a temporary render target (I used a 1/4 sized
+	 * target).
+	 *
+	 * Pass two & three:
+	 *
+	 * The results of the previous pass are re-blurred, each time with a
+	 * decreased distance between samples.
+	 */
+
+	'godrays_generate': {
+
+		uniforms: {
+
+			tInput: {
+				type: "t",
+				value: null
+			},
+
+			fStepSize: {
+				type: "f",
+				value: 1.0
+			},
+
+			vSunPositionScreenSpace: {
+				type: "v2",
+				value: new THREE.Vector2( 0.5, 0.5 )
+			}
+
+		},
+
+		vertexShader: [
+
+			"varying vec2 vUv;",
+
+			"void main() {",
+
+				"vUv = uv;",
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+			"}"
+
+		].join("\n"),
+
+		fragmentShader: [
+
+			"#define TAPS_PER_PASS 6.0",
+
+			"varying vec2 vUv;",
+
+			"uniform sampler2D tInput;",
+
+			"uniform vec2 vSunPositionScreenSpace;",
+			"uniform float fStepSize;", // filter step size
+
+			"void main() {",
+
+				// delta from current pixel to "sun" position
+
+				"vec2 delta = vSunPositionScreenSpace - vUv;",
+				"float dist = length( delta );",
+
+				// Step vector (uv space)
+
+				"vec2 stepv = fStepSize * delta / dist;",
+
+				// Number of iterations between pixel and sun
+
+				"float iters = dist/fStepSize;",
+
+				"vec2 uv = vUv.xy;",
+				"float col = 0.0;",
+
+				// This breaks ANGLE in Chrome 22
+				//	- see http://code.google.com/p/chromium/issues/detail?id=153105
+
+				/*
+				// Unrolling didnt do much on my hardware (ATI Mobility Radeon 3450),
+				// so i've just left the loop
+
+				"for ( float i = 0.0; i < TAPS_PER_PASS; i += 1.0 ) {",
+
+					// Accumulate samples, making sure we dont walk past the light source.
+
+					// The check for uv.y < 1 would not be necessary with "border" UV wrap
+					// mode, with a black border colour. I don't think this is currently
+					// exposed by three.js. As a result there might be artifacts when the
+					// sun is to the left, right or bottom of screen as these cases are
+					// not specifically handled.
+
+					"col += ( i <= iters && uv.y < 1.0 ? texture2D( tInput, uv ).r : 0.0 );",
+					"uv += stepv;",
+
+				"}",
+				*/
+
+				// Unrolling loop manually makes it work in ANGLE
+
+				"if ( 0.0 <= iters && uv.y < 1.0 ) col += texture2D( tInput, uv ).r;",
+				"uv += stepv;",
+
+				"if ( 1.0 <= iters && uv.y < 1.0 ) col += texture2D( tInput, uv ).r;",
+				"uv += stepv;",
+
+				"if ( 2.0 <= iters && uv.y < 1.0 ) col += texture2D( tInput, uv ).r;",
+				"uv += stepv;",
+
+				"if ( 3.0 <= iters && uv.y < 1.0 ) col += texture2D( tInput, uv ).r;",
+				"uv += stepv;",
+
+				"if ( 4.0 <= iters && uv.y < 1.0 ) col += texture2D( tInput, uv ).r;",
+				"uv += stepv;",
+
+				"if ( 5.0 <= iters && uv.y < 1.0 ) col += texture2D( tInput, uv ).r;",
+				"uv += stepv;",
+
+				// Should technically be dividing by 'iters', but 'TAPS_PER_PASS' smooths out
+				// objectionable artifacts, in particular near the sun position. The side
+				// effect is that the result is darker than it should be around the sun, as
+				// TAPS_PER_PASS is greater than the number of samples actually accumulated.
+				// When the result is inverted (in the shader 'godrays_combine', this produces
+				// a slight bright spot at the position of the sun, even when it is occluded.
+
+				"gl_FragColor = vec4( col/TAPS_PER_PASS );",
+				"gl_FragColor.a = 1.0;",
+
+			"}"
+
+		].join("\n")
+
+	},
+
+	/**
+	 * Additively applies god rays from texture tGodRays to a background (tColors).
+	 * fGodRayIntensity attenuates the god rays.
+	 */
+
+	'godrays_combine': {
+
+		uniforms: {
+
+			tColors: {
+				type: "t",
+				value: null
+			},
+
+			tGodRays: {
+				type: "t",
+				value: null
+			},
+
+			fGodRayIntensity: {
+				type: "f",
+				value: 0.69
+			},
+
+			vSunPositionScreenSpace: {
+				type: "v2",
+				value: new THREE.Vector2( 0.5, 0.5 )
+			}
+
+		},
+
+		vertexShader: [
+
+			"varying vec2 vUv;",
+
+			"void main() {",
+
+				"vUv = uv;",
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+			"}"
+
+			].join("\n"),
+
+		fragmentShader: [
+
+			"varying vec2 vUv;",
+
+			"uniform sampler2D tColors;",
+			"uniform sampler2D tGodRays;",
+
+			"uniform vec2 vSunPositionScreenSpace;",
+			"uniform float fGodRayIntensity;",
+
+			"void main() {",
+
+				// Since THREE.MeshDepthMaterial renders foreground objects white and background
+				// objects black, the god-rays will be white streaks. Therefore value is inverted
+				// before being combined with tColors
+
+				"gl_FragColor = texture2D( tColors, vUv ) + fGodRayIntensity * vec4( 1.0 - texture2D( tGodRays, vUv ).r );",
+				"gl_FragColor.a = 1.0;",
+
+			"}"
+
+		].join("\n")
+
+	},
+
+
+	/**
+	 * A dodgy sun/sky shader. Makes a bright spot at the sun location. Would be
+	 * cheaper/faster/simpler to implement this as a simple sun sprite.
+	 */
+
+	'godrays_fake_sun': {
+
+		uniforms: {
+
+			vSunPositionScreenSpace: {
+				type: "v2",
+				value: new THREE.Vector2( 0.5, 0.5 )
+			},
+
+			fAspect: {
+				type: "f",
+				value: 1.0
+			},
+
+			sunColor: {
+				type: "c",
+				value: new THREE.Color( 0xffee00 )
+			},
+
+			bgColor: {
+				type: "c",
+				value: new THREE.Color( 0x000000 )
+			}
+
+		},
+
+		vertexShader: [
+
+			"varying vec2 vUv;",
+
+			"void main() {",
+
+				"vUv = uv;",
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+			"}"
+
+		].join("\n"),
+
+		fragmentShader: [
+
+			"varying vec2 vUv;",
+
+			"uniform vec2 vSunPositionScreenSpace;",
+			"uniform float fAspect;",
+
+			"uniform vec3 sunColor;",
+			"uniform vec3 bgColor;",
+
+			"void main() {",
+
+				"vec2 diff = vUv - vSunPositionScreenSpace;",
+
+				// Correct for aspect ratio
+
+				"diff.x *= fAspect;",
+
+				"float prop = clamp( length( diff ) / 0.5, 0.0, 1.0 );",
+				"prop = 0.35 * pow( 1.0 - prop, 3.0 );",
+
+				"gl_FragColor.xyz = mix( sunColor, bgColor, 1.0 - prop );",
+				"gl_FragColor.w = 1.0;",
+
+			"}"
+
+		].join("\n")
+
+	}
+
+};
+
+},{}],16:[function(_dereq_,module,exports){
 // three.js - http://github.com/mrdoob/three.js
 
 !function(){
-'use strict';var THREE=THREE||{REVISION:"58"};self.console=self.console||{info:function(){},log:function(){},debug:function(){},warn:function(){},error:function(){}};self.Int32Array=self.Int32Array||Array;self.Float32Array=self.Float32Array||Array;String.prototype.trim=String.prototype.trim||function(){return this.replace(/^\s+|\s+$/g,"")};
+'use strict';var THREE= window.THREE = THREE||{REVISION:"58"};self.console=self.console||{info:function(){},log:function(){},debug:function(){},warn:function(){},error:function(){}};self.Int32Array=self.Int32Array||Array;self.Float32Array=self.Float32Array||Array;String.prototype.trim=String.prototype.trim||function(){return this.replace(/^\s+|\s+$/g,"")};
 THREE.extend=function(a,b){if(Object.keys)for(var c=Object.keys(b),d=0,e=c.length;d<e;d++){var f=c[d];Object.defineProperty(a,f,Object.getOwnPropertyDescriptor(b,f))}else for(f in c={}.hasOwnProperty,b)c.call(b,f)&&(a[f]=b[f]);return a};
 (function(){for(var a=0,b=["ms","moz","webkit","o"],c=0;c<b.length&&!window.requestAnimationFrame;++c)window.requestAnimationFrame=window[b[c]+"RequestAnimationFrame"],window.cancelAnimationFrame=window[b[c]+"CancelAnimationFrame"]||window[b[c]+"CancelRequestAnimationFrame"];void 0===window.requestAnimationFrame&&(window.requestAnimationFrame=function(b){var c=Date.now(),f=Math.max(0,16-(c-a)),g=window.setTimeout(function(){b(c+f)},f);a=c+f;return g});window.cancelAnimationFrame=window.cancelAnimationFrame||
 function(a){window.clearTimeout(a)}})();THREE.CullFaceNone=0;THREE.CullFaceBack=1;THREE.CullFaceFront=2;THREE.CullFaceFrontBack=3;THREE.FrontFaceDirectionCW=0;THREE.FrontFaceDirectionCCW=1;THREE.BasicShadowMap=0;THREE.PCFShadowMap=1;THREE.PCFSoftShadowMap=2;THREE.FrontSide=0;THREE.BackSide=1;THREE.DoubleSide=2;THREE.NoShading=0;THREE.FlatShading=1;THREE.SmoothShading=2;THREE.NoColors=0;THREE.FaceColors=1;THREE.VertexColors=2;THREE.NoBlending=0;THREE.NormalBlending=1;THREE.AdditiveBlending=2;
@@ -714,7 +2067,7 @@ fragmentShader:"uniform vec3 color;\nuniform sampler2D map;\nuniform float opaci
 
 module.exports = THREE
 }()
-},{}],2:[function(_dereq_,module,exports){
+},{}],17:[function(_dereq_,module,exports){
 (function (global){
 !function() {
 
@@ -807,7 +2160,7 @@ module.exports = $
 
 }()
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],3:[function(_dereq_,module,exports){
+},{}],18:[function(_dereq_,module,exports){
 (function() {
 //"use strict" 
 // can't use strict because eval is used to evaluate user code in the run method
@@ -1426,7 +2779,7 @@ Gibber.Graphics = _dereq_( './graphics/graphics' )( Gibber )
 module.exports = Gibber
 
 })()
-},{"./dollar":2,"./graphics/graphics":6,"./utilities":7}],4:[function(_dereq_,module,exports){
+},{"./dollar":17,"./graphics/graphics":22,"./utilities":26}],19:[function(_dereq_,module,exports){
 !function() {
   var cnvs = null, Gibber, Graphics
 
@@ -1437,10 +2790,7 @@ module.exports = Gibber
           that = ctx,
           three = null;
       
-      console.log( "NOTHREE - 1", noThree, Graphics.noThree )    
       if( typeof noThree === 'undefined' ) noThree = typeof Graphics.noThree !== 'undefined' ? Graphics.noThree : false
-      
-      console.log( "NOTHREE", noThree )
       
       if( Graphics.running ) Graphics.clear()
 
@@ -1458,8 +2808,6 @@ module.exports = Gibber
       }else if( Graphics.mode === '3d' ) {
         Graphics.use( '2d', null, false )
       }
-
-      console.log( "NOTHREE 2", Graphics.noThree )
 
       three = $( '#three' )
       three.style.display = 'block'
@@ -1495,7 +2843,7 @@ module.exports = Gibber
         canvas: canvas,
         texture: tex || { needsUpdate: function() {} }, 
         remove : function() {
-          $( '#three' ).hide()
+          $( '#three' ).style.display = 'none'//hide()
           //Graphics.canvas = null
           //Graphics.ctx = null 
           //cnvs = null
@@ -1884,7 +3232,7 @@ module.exports = Gibber
   module.exports = function( _Gibber, _Graphics ) { Gibber = _Gibber; Graphics = _Graphics; return TwoD; }
 
 }()
-},{}],5:[function(_dereq_,module,exports){
+},{}],20:[function(_dereq_,module,exports){
 module.exports = function( Gibber, Graphics, THREE ){ 
 
 "use strict"
@@ -2397,7 +3745,225 @@ return Geometry;
 
 }
 
-},{}],6:[function(_dereq_,module,exports){
+},{}],21:[function(_dereq_,module,exports){
+module.exports = function( Gibber, Graphics ) {
+
+"use strict"
+    
+var processArgs = function( args, type, shape ) {
+   var _args = Gibber.processArguments( args, type ),
+       out
+
+   if( typeof args[0] === 'object' ) {
+     out = []
+     for( var argsKey in shape ) {
+       var pushValue = typeof args[0][ argsKey ] !== 'undefined' ? args[0][ argsKey ] : shape[ argsKey ]
+       out.push( pushValue )
+     }
+   }else if( Array.isArray( args )){
+     out = args
+   }else{
+     out = []
+     for( var argsKey in shape ) {
+       out.push( shape[ argsKey ] )
+     }
+   }
+
+   return out
+}
+// _mappingProperties = {
+//   Bleach : {
+//     opacity: {
+//       min: 0, max: 1,
+//       output: Gibber.LINEAR,
+//       timescale: 'graphics',
+//     }
+//   },
+//   Shader : {
+//     amp:{
+//       min:0, max:1,
+//       output: Gibber.LINEAR,
+//       timescale: 'graphics',
+//     },
+//     time:{
+//       min:0, max:1,
+//       output: Gibber.LINEAR,
+//       timescale: 'graphics',
+//     },
+//   }
+// }
+// defaultFragment = [
+//   "uniform lowp float amp;",
+//   "uniform sampler2D tDiffuse;",
+//   "uniform lowp float time;",
+//   "varying lowp vec2 p;",
+//   "",
+//   "void main() {",
+//   "  gl_FragColor = texture2D( tDiffuse, p ).rgba;",
+//   "}"
+// ].join('\n'),
+// defaultVertex = [
+//   "varying vec2 p;",
+//   "void main() {",
+//     "p = uv;",
+//     "gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+//   "}"
+// ].join("\n")
+  
+var Shaders = {
+  Stripes : function() {
+    var frag = [
+    "varying vec2 p;",
+    "uniform float xCount;",
+    "uniform float yCount;",
+    "uniform float blend;",    
+    "uniform sampler2D tDiffuse;",
+    "uniform vec3 colorX;",
+    "uniform vec3 colorY;", 
+    "",
+    "void main() {",
+    "  vec3 color;",     
+    "  float x = p.x * xCount;",
+    "  float y = p.y * yCount;",
+    "	 int stripeX = int(mod( x, 2.));",
+    "	 int stripeY = int(mod( y, 2.));",
+    "",    
+    "  if( stripeX == 1 || stripeY == 1) {",
+    "    color = colorX;",
+    "  }else{",
+    "    color = vec3(0., 0., 0.);",
+    "  }",
+    "",
+    "  vec3 prev = texture2D( tDiffuse, p ).rgb;",
+    "  gl_FragColor = vec4( mix(color, prev, blend), 1. );",
+    "}",
+    ].join('\n')
+    
+    var shader = Shader( frag )
+    shader.uniform( 'xCount', 4, 1, 100, 'float' )
+    shader.uniform( 'yCount', 4, 1, 100, 'float' )
+    shader.uniform( 'blend', 0, 1, 0, 'float' )
+    
+    shader.uniforms.colorX = { type:'c', value:{ r:1, g:1, b:1 } }
+    shader.uniforms.colorY = { type:'c', value:{ r:1, g:1, b:1 } }
+    
+    Object.defineProperties( shader, {
+      colorX: {
+        get: function()  { return shader.uniforms.colorX.value },
+        set: function(v) { shader.uniforms.colorX.value = Color(v) }        
+      },
+      colorY: {
+        get: function()  { return shader.uniforms.colorY.value },
+        set: function(v) { shader.uniforms.colorY.value = Color(v) }
+      }
+    })
+    
+    return shader
+  },
+  
+  Circles : function() {
+    var frag = [
+    "uniform float time;",
+    "uniform float thickness;",
+    "uniform float speed;",
+    "uniform float radius;",
+    "uniform float x;",
+    "uniform float y;",
+    "uniform sampler2D tDiffuse;",
+    "uniform vec3 color;",
+    "varying vec2 p;",
+    "",
+    "void main() {",
+    "  vec2 uv = 2. * p - 1.;",
+    "  float _speed = 20. * speed;",
+    "  float edgeDistance = radius * thickness;",
+    "  float dist = distance( p, vec2(x,y) );",
+    "  float growth = mod(time, 1.) / -_speed;",
+    "",
+    "  float moddist = mod( dist + growth, radius );",
+    "  float _out = smoothstep( moddist, moddist+edgeDistance, radius / 2. );",
+    "  _out += smoothstep( moddist, moddist-edgeDistance, radius / 2.);",
+    "",
+    "  gl_FragColor = vec4( vec3(1.- _out), 1. );",
+    "}",
+    ].join('\n')
+    
+    var shader = Shader( frag )
+    shader.uniform( 'blend', 1, 0, 1, 'float' )
+    shader.uniform( 'thickness', .1, 0, 1, 'float' )
+    shader.uniform( 'x', .5, 0, 1, 'float' )
+    shader.uniform( 'y', .5, 0, 1, 'float' )
+    shader.uniform( 'speed', 1, -1, 1, 'float' )               
+    shader.uniform( 'radius', .05, 0, 1, 'float' )
+    
+    shader.uniforms.color = { type:'c', value:{ r:1, g:0, b:0 } }
+    // shader.uniforms.colorY = { type:'c', value:{ r:1, g:1, b:1 } }
+    // 
+    
+    var oldSpeedSet = shader.__lookupSetter__('speed'), oldSpeedGet = shader.__lookupGetter__('speed')
+    Object.defineProperties( shader, {
+      speed: {
+        get: function() { return oldSpeedGet() },
+        set: function(v) {
+          v = v > 0 ? 1 - v : -1 - v
+          oldSpeedSet( v )
+        }
+      }
+    })
+    //   colorX: {
+    //     get: function()  { return shader.uniforms.colorX.value },
+    //     set: function(v) { shader.uniforms.colorX.value = v }        
+    //   },
+    //   colorY: {
+    //     get: function()  { return shader.uniforms.colorY.value },
+    //     set: function(v) { shader.uniforms.colorY.value = v }        
+    //   }
+    // })
+    return shader
+  },
+  Pixellate : function() {
+    var frag = [
+  		"uniform sampler2D tDiffuse;",
+  		"uniform float amount;",
+  		"uniform float blend;",
+  		"varying vec2 vUv;",
+  		"void main() {",
+  		"	vec2 sd = vec2( amount );",
+  		"	vec2 samplePos = vUv - mod( vUv, sd );",
+  		"	vec4 p = texture2D( tDiffuse, samplePos );",
+  		"	vec4 pp = texture2D( tDiffuse, vUv );",
+  		"	vec3 _blend = (p.rgb * vec3( blend ) ) + ( pp.rgb * vec3(1.0 - blend ) );",
+  		"	gl_FragColor = vec4( _blend, 1. );",
+  		"}"
+    ].join('\n')
+    
+    var vert = [
+			"varying vec2 vUv;",
+			"void main() {",
+			"	vUv = uv;",
+			"	gl_Position = vec4( position[0],position[1],position[2], 1.0 );",
+			"}"
+		].join("\n")
+    
+    var shader = Shader( frag, vert )
+    shader.uniform( 'amount', .01, 0, 1, 'float' )
+    shader.uniform( 'blend', 1, 0, 1, 'float' )
+  
+    return shader
+  },
+}
+
+
+return Shaders
+
+// for( var key in Shaders ) {
+//   window[ key ] = Shaders[ key ]
+// }
+
+//$.extend( window, Gibber.Graphics.Geometry )
+
+}
+},{}],22:[function(_dereq_,module,exports){
 !function() {
 
 "use strict"
@@ -2416,35 +3982,35 @@ Graphics = {
   THREE: _dereq_('../../external/three/three.min'),
   
   load : function() {
-    $script( [ 'external/three/three.min', 'external/three/stats.min', 'gibber/graphics/geometry','gibber/graphics/2d', /*'gibber/graphics/shapes2d'*/ ], 'graphics', function() {
-      $script([
-        'external/three/postprocessing/EffectComposer',
-        'external/three/postprocessing/RenderPass',
-        'external/three/postprocessing/MaskPass',
-        'external/three/postprocessing/ShaderPass',
-        'external/three/postprocessing/CopyShader',
-        'external/three/postprocessing/shaders/DotScreenShader',
-        'external/three/postprocessing/DotScreenPass',
-        'external/three/postprocessing/FilmPass',
-        'external/three/postprocessing/shaders/FilmShader',      
-        'external/three/postprocessing/shaders/KaleidoShader',
-        'external/three/postprocessing/shaders/EdgeShader',
-        'external/three/postprocessing/shaders/FocusShader',      
-        'external/three/postprocessing/shaders/ShaderGodRays',      
-        'external/three/postprocessing/shaders/BleachBypassShader',
-        'external/three/postprocessing/shaders/ColorifyShader',
-      ], 'postprocessing', function() {
-        $script([
-          'gibber/graphics/postprocessing',
-          'gibber/graphics/shader', 
-          'gibber/graphics/gibber_shaders',
-          'gibber/graphics/video'
-        ], function() {
-          Graphics.PostProcessing.init()
-          window.Graphics = Graphics
-        })
-      })
-    })
+    //$script( [ 'external/three/three.min', 'external/three/stats.min', 'gibber/graphics/geometry','gibber/graphics/2d', /*'gibber/graphics/shapes2d'*/ ], 'graphics', function() {
+    //   $script([
+    //     'external/three/postprocessing/EffectComposer',
+    //     'external/three/postprocessing/RenderPass',
+    //     'external/three/postprocessing/MaskPass',
+    //     'external/three/postprocessing/ShaderPass',
+    //     'external/three/postprocessing/CopyShader',
+    //     'external/three/postprocessing/shaders/DotScreenShader',
+    //     'external/three/postprocessing/DotScreenPass',
+    //     'external/three/postprocessing/FilmPass',
+    //     'external/three/postprocessing/shaders/FilmShader',      
+    //     'external/three/postprocessing/shaders/KaleidoShader',
+    //     'external/three/postprocessing/shaders/EdgeShader',
+    //     'external/three/postprocessing/shaders/FocusShader',      
+    //     'external/three/postprocessing/shaders/ShaderGodRays',      
+    //     'external/three/postprocessing/shaders/BleachBypassShader',
+    //     'external/three/postprocessing/shaders/ColorifyShader',
+    //   ], 'postprocessing', function() {
+    //     $script([
+    //       'gibber/graphics/postprocessing',
+    //       'gibber/graphics/shader', 
+    //       'gibber/graphics/gibber_shaders',
+    //       'gibber/graphics/video'
+    //     ], function() {
+    //       Graphics.PostProcessing.init()
+    //       window.Graphics = Graphics
+    //     })
+    //   })
+    // })
   },
   
   init : function( mode, container, noThree ) {
@@ -2754,13 +4320,953 @@ Graphics = {
 
 module.exports = function( Gibber ) { 
   Graphics.Geometry = _dereq_( './geometry' )( Gibber, Graphics, Graphics.THREE )
-  Graphics.TwoD = _dereq_( './2d' )( Gibber, Graphics )  
+  Graphics.TwoD = _dereq_( './2d' )( Gibber, Graphics )
+  
+  _dereq_( '../../external/three/postprocessing/EffectComposer' )
+  _dereq_( '../../external/three/postprocessing/RenderPass' )
+  _dereq_( '../../external/three/postprocessing/MaskPass' )
+  _dereq_( '../../external/three/postprocessing/ShaderPass' )
+  _dereq_( '../../external/three/postprocessing/CopyShader' )
+  _dereq_( '../../external/three/postprocessing/shaders/DotScreenShader' )
+  _dereq_( '../../external/three/postprocessing/DotScreenPass' )
+  _dereq_( '../../external/three/postprocessing/FilmPass' )
+  _dereq_( '../../external/three/postprocessing/shaders/FilmShader' )
+  _dereq_( '../../external/three/postprocessing/shaders/KaleidoShader' )
+  _dereq_( '../../external/three/postprocessing/shaders/EdgeShader' )
+  _dereq_( '../../external/three/postprocessing/shaders/FocusShader' )
+  _dereq_( '../../external/three/postprocessing/shaders/ShaderGodRays' )
+  _dereq_( '../../external/three/postprocessing/shaders/BleachBypassShader' )
+  _dereq_( '../../external/three/postprocessing/shaders/ColorifyShader' )
+  
+  Graphics.PostProcessing = _dereq_( './postprocessing' )( Gibber, Graphics )
+  Graphics.PostProcessing.init()
+  Graphics.Shaders = _dereq_( './shader' )( Gibber, Graphics )
+  Graphics.GibberShaders = _dereq_( './gibber_shaders' )( Gibber, Graphics )
+  Graphics.Video = _dereq_( './video' )( Gibber, Graphics )
+    
   return Graphics; 
 }
 
 }()
 
-},{"../../external/three/three.min":1,"../dollar":2,"./2d":4,"./geometry":5}],7:[function(_dereq_,module,exports){
+},{"../../external/three/postprocessing/CopyShader":1,"../../external/three/postprocessing/DotScreenPass":2,"../../external/three/postprocessing/EffectComposer":3,"../../external/three/postprocessing/FilmPass":4,"../../external/three/postprocessing/MaskPass":5,"../../external/three/postprocessing/RenderPass":6,"../../external/three/postprocessing/ShaderPass":7,"../../external/three/postprocessing/shaders/BleachBypassShader":8,"../../external/three/postprocessing/shaders/ColorifyShader":9,"../../external/three/postprocessing/shaders/DotScreenShader":10,"../../external/three/postprocessing/shaders/EdgeShader":11,"../../external/three/postprocessing/shaders/FilmShader":12,"../../external/three/postprocessing/shaders/FocusShader":13,"../../external/three/postprocessing/shaders/KaleidoShader":14,"../../external/three/postprocessing/shaders/ShaderGodRays":15,"../../external/three/three.min":16,"../dollar":17,"./2d":19,"./geometry":20,"./gibber_shaders":21,"./postprocessing":23,"./shader":24,"./video":25}],23:[function(_dereq_,module,exports){
+module.exports = function( Gibber, Graphics ) {
+
+"use strict"
+    
+var processArgs = function( args, type, shape ) {
+   var _args = Gibber.processArguments( args, type ),
+       out
+
+   if( typeof args[0] === 'object' ) {
+     out = []
+     for( var argsKey in shape ) {
+       var pushValue = typeof args[0][ argsKey ] !== 'undefined' ? args[0][ argsKey ] : shape[ argsKey ]
+       out.push( pushValue )
+     }
+   }else if( Array.isArray( args )){
+     out = args
+   }else{
+     out = []
+     for( var argsKey in shape ) {
+       out.push( shape[ argsKey ] )
+     }
+   }
+
+   return out
+  },
+  _mappingProperties = {
+    Dots: {
+      angle: {
+        min: 0, max: Math.PI * 2,
+        output: Gibber.LINEAR,
+        wrap: true,       
+        timescale: 'graphics',
+      },
+      scale: {
+        min: 0, max: 1,
+        output: Gibber.LINEAR,       
+        timescale: 'graphics',
+      },  
+    },
+    Film: {
+      nIntensity: {
+        min: 0, max: 1,
+        output: Gibber.LINEAR,      
+        timescale: 'graphics',
+      },
+      sIntensity: {
+        min: 0, max: 1,
+        output: Gibber.LINEAR,      
+        timescale: 'graphics',
+      },
+      sCount: {
+        min: 0, max: 2048,
+        output: Gibber.LINEAR,      
+        timescale: 'graphics',
+      },
+    },
+    Kaleidoscope: {
+      angle: {
+        min: 0, max: Math.PI * 2,
+        output: Gibber.LINEAR,
+        wrap: true,       
+        timescale: 'graphics',
+      },
+      sides: {
+        min: 2, max: 36,
+        output: Gibber.LINEAR,       
+        timescale: 'graphics',
+      },
+    },
+    Focus: {
+      screenWidth: {
+        min: 0, max: 1024,
+        output: Gibber.LINEAR, 
+        timescale: 'graphics',
+      },
+      screenHeight: {
+        min: 0, max: 1024,
+        output: Gibber.LINEAR, 
+        timescale: 'graphics',
+      },
+      sampleDistance: {
+        min: 0, max: 2,
+        output: Gibber.LINEAR, 
+        timescale: 'graphics',
+      },
+      waveFactor: {
+        min: 0, max: .05,
+        output: Gibber.LINEAR, 
+        timescale: 'graphics',
+      },
+    },
+    Bleach : {
+      opacity: {
+        min: 0, max: 1,
+        output: Gibber.LINEAR,
+        timescale: 'graphics',
+      }
+    },
+    Shader : {
+      amp:{
+        min:0, max:1,
+        output: Gibber.LINEAR,
+        timescale: 'graphics',
+      },
+      time:{
+        min:0, max:1,
+        output: Gibber.LINEAR,
+        timescale: 'graphics',
+      },
+    }
+  },
+  shaders = {
+     Dots: {
+  		properties: {
+    		angle:  .5,
+    		scale:  .035,
+        center: new THREE.Vector2( .5, .5 ),
+  		},
+  		type:'uniforms',
+  		init : function(obj) {
+  			var _center = obj.center ? new THREE.Vector2( obj.center[0], obj.center[1] ) : new THREE.Vector2( .5, .5 );
+  			return new THREE.DotScreenPass( _center, obj.angle, obj.scale, obj.mix );
+  		},
+    },
+    Film: {
+			properties:{
+				nIntensity: 1,
+				sIntensity: .5,
+				sCount: 1024,
+				grayscale: false,
+				mix: 1,
+			},
+			type:'uniforms',
+			init: function(obj) {
+        obj = obj || {}
+				obj.nIntensity = obj.nIntensity || 1
+				obj.sIntensity = obj.sIntensity || .5
+				obj.sCount = obj.sCount || 1024
+				obj.grayscale = obj.grayscale || false
+				obj.mix = obj.mix || 1
+				return new THREE.FilmPass( obj.nIntensity, obj.sIntensity, obj.sCount, obj.grayscale, obj.mix )
+			}
+		},
+    Kaleidoscope: {
+      properties: {
+    		sides: 6.0,
+    		angle: 0.0,
+      },
+      
+      init: function( obj ) {
+        obj = obj || {}
+        obj.sides = obj.sides || 6
+        obj.angle = obj.angle || 0
+        
+        return new THREE.ShaderPass( THREE.KaleidoShader )
+      }
+    },
+    Edge: {
+      properties: {
+    		aspect: new THREE.Vector2( 512, 512 ) ,
+      },
+      
+      init: function(obj) {
+        obj = obj || {}
+        obj.aspect = obj.aspect || shaders.Edge.properties.aspect
+        
+        return new THREE.ShaderPass( THREE.EdgeShader )
+      }
+    },
+    Focus : {
+      properties : {
+  		  screenWidth:    1024,
+  		  screenHeight:   1024,
+  		  sampleDistance: 2,
+  		  waveFactor:     0.1
+      },
+      init: function(obj) {
+        return new THREE.ShaderPass( THREE.FocusShader )
+      }
+    },
+    Godrays : {
+      properties: {},
+      init: function() {
+        return new THREE.ShaderPass( THREE.ShaderGodRays )
+      }
+    },
+    Bleach :{ 
+      properties: { opacity: 1 },
+      init : function() {
+        return new THREE.ShaderPass( THREE.BleachBypassShader )
+      }
+    },
+    Colorify : {
+      properties: { color: new THREE.Color( 0xff0000 ) },
+      init: function( obj ) {
+        obj = obj || {}
+        console.log( obj.color )
+        obj.color = typeof obj.color === 'string' ? new THREE.Color( Color(obj.color).hexString() ) : shaders.Colorify.properties.color
+        
+        var shader = new THREE.ShaderPass( THREE.ColorifyShader )
+        shader.uniforms[ 'color' ].value = obj.color
+        return shader
+      }
+    },
+    Shader : {
+      properties : {
+        amp:.1,
+        time:0,
+      },
+			fragment : null,
+			vertex : null,
+      init : function( fragment, vertex ) {
+        var columnV = null, columnF = null, out = null, shader = null
+        if( fragment && typeof fragment === 'object' ) {
+          columnF  = fragment
+          fragment = Gibber.Graphics.PostProcessing.defs + columnF.value
+        }
+				
+        if( vertex && typeof vertex === 'object' ) {
+          columnV = vertex
+          vertex = columnV.value
+        }
+        
+        shader = Gibber.Graphics.Shaders.make( fragment, vertex )
+				
+        if( shader !== null) {
+          out = new THREE.ShaderPass( shader )
+        }
+        
+        if( out !== null ) {
+					out.fragmentText = shader.fragmentText
+					out.vertexText = shader.vertexText
+          if( columnV ) { out.columnV = columnV; columnV.shader = out }
+					if( columnF ) { out.columnF = columnF; columnF.shader = out }
+        }
+        	
+        return out
+      },
+    },
+  }
+
+var PP = {
+  composer : null,
+  fx: [],
+  isRunning : false,
+  defs: [
+    "#define PI 3.14159265358979323846264",
+    "float rand(vec2 co){",
+    "  return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);",
+    "}\n",
+  ].join('\n'),
+  
+  start: function() {
+    this.composer = new THREE.EffectComposer( Gibber.Graphics.renderer );
+
+    this.renderScene = new THREE.RenderPass( Gibber.Graphics.scene, Gibber.Graphics.camera );
+
+    this.renderScene.clear = true;
+    this.renderScene.renderToScreen = true;
+
+    this.composer.addPass( this.renderScene )
+    this.isRunning = true
+  },
+  init : function() {
+    // Gibber.Graphics.running = true
+    for( var key in shaders ) {
+      (function() {
+        var name = key,
+            shaderProps = shaders[ key ],
+            mappingProperties = _mappingProperties[ key ]
+        
+        var constructor = function() {
+          // if( 'shaders' in shaders[ key ] ) {
+          //console.log( shaderProps, shaderProps.shaders, shaderProps.shaders[0] )
+          //var shader = shaderProps.shaders[0].init({ center:undefined, angle:.5, scale:.035, mix:.1 })
+          if( Gibber.Graphics.canvas === null){
+            Gibber.Graphics.init('2d', null, false)
+          }
+          
+          Gibber.Graphics.running = true 
+          
+					if( name !== 'Shader' ) {
+	          var args = Array.prototype.slice.call( arguments,0 ),
+	              shader = shaderProps.init.call( shaderProps, args )
+					}else{
+					  shader = shaderProps.init( arguments[0], arguments[1] )
+          }
+          
+          // TODO: replace with Graphics.seq or Audio.seq
+          shader.seq = {}
+          
+          Gibber.createProxyProperties( shader, {  } ) // call with empty object to initialize
+          
+					shader.uniform = function(_name, _value, _min, _max, type ) {
+						_min = isNaN( _min ) ? 0 : _min
+						_max = isNaN( _max ) ? 1 : _max				
+						_value = isNaN( _value ) && typeof _value !== 'object' ? _min + (_max - _min) / 2 : _value
+		        
+						if( typeof shader.mappingProperties[ _name ] === 'undefined' ) {
+							_mappingProperties[ _name ] = shader.mappingProperties[ _name ] = {
+				        min:_min, max:_max,
+				        output: Gibber.LINEAR,
+				        timescale: 'graphics',
+				      }
+						}
+            
+            var info = getShaderInfo( _value, type, _name ),
+                shaderType = info[0],
+                threeType  = info[1],
+                shaderString = info[2]
+            
+            console.log( "TYPE = ", shaderType, threeType )
+            
+						if( typeof shader.uniforms[ _name ] === 'undefined' && ( shader.columnF ) ) {
+              var text = shaderString
+              text += shader.columnF.editor.getValue()
+              shader.columnF.editor.setValue( text )
+            }
+            
+            shader.uniforms[ _name ] = { 'type': threeType, value:_value }
+            
+            Object.defineProperty( shader, _name, {
+              configurable: true,
+              get : function() { return shader.uniforms[_name].value },
+              set : function(v){ return shader.uniforms[_name].value = v }
+            })
+            Gibber.createProxyProperty( shader, _name, true )
+            
+            shader[ _name ] = _value
+            
+            return shader
+          }
+					
+          
+          if( shader === null) {
+            console.log( "SHADER ERROR... aborting" )
+            return
+          }
+          
+          if( !PP.isRunning ) { PP.start() }
+
+          shader.renderToScreen = true
+          
+          shader.name = name
+          shader.sequencers = []
+          
+          if( PP.fx.length > 0 ) {
+            PP.fx[ PP.fx.length - 1 ].renderToScreen = false;
+          }
+        
+
+          //console.log( shader )
+          PP.composer.addPass( shader )
+          //return shader;
+          PP.fx.push( shader )
+          // console.log(shader.material.program)
+          // console.log( gl );
+          // 
+          // Gibber.Utilities.future( function() {
+          //   var status = gl.getProgramParameter( shader.material.program, gl.LINK_STATUS )
+          //   if( !status ) { 
+          //     console.log(" REMOVING BUGGY SHADER ", status)
+          //     shader.remove() 
+          //   }
+          // }, 44 * 15)
+          
+          PP.defineProperties( shader )
+          
+          console.log( shader, mappingProperties )
+          
+          for( var key in mappingProperties ) {
+    				var prop = mappingProperties [ key ]
+    				shader.uniform( key, shader[ key ], prop.min, prop.max, shader.uniforms[ key ].type )
+          }
+          
+          $.extend( shader, PP.shader )
+          
+          Gibber.Graphics.graph.push( shader )
+          
+          shader.update = function() {}
+          
+    			shader._update = function() {
+    				for(var i = 0; i < shader.mods.length; i++) {
+    					var mod = shader.mods[i],
+                  val = shader[ mod.name ],
+                  upper = mod.name
+              
+              upper = upper.charAt(0).toUpperCase() + upper.substr(1)
+              
+              if( Array.isArray( val ) ) val = val[0]
+              
+    					switch(mod.type) {
+    						case "+":
+    							shader[ upper ].value = typeof mod.modulator === "number" ? val + mod.modulator : val + mod.modulator.getValue() * mod.mult
+    							break
+    						case "++":
+    							shader[ upper ].value = typeof mod.modulator === "number" ? val + mod.modulator : val + Math.abs( mod.modulator.getValue() * mod.mult )
+    							break							
+    						case "-" :
+    							shader[ upper ].value = typeof mod.modulator === "number" ? val - mod.modulator : val - mod.modulator.getValue() * mod.mult
+    							break
+    						case "=":
+    							shader[ upper ].value = typeof mod.modulator === "number" ? mod.modulator : mod.modulator.getValue() * mod.mult
+    							break
+    						default:
+    						break;	
+    					}
+              
+              shader[ upper ].oldSetter.call( this, shader[ upper ].value ) 
+    				}
+            
+            if( typeof shader.time !== 'undefined' ) shader.time += 1/60;
+						
+						shader.update()
+    			}
+      
+    			shader.mods = []
+    			shader.mod = function( _name, _modulator, _type, _mult ) {
+    				this.mods.push({ name:_name, modulator:_modulator, type:_type || "+", mult: _mult || 1 })
+    			}
+          
+          shader.removeMod = function( name ) {
+            if( name ) {
+              for( var i = 0; i < this.mods.length; i++ ) {
+                var m = this.mods[ i ]
+                if( m.name === name ) {
+                  this.mods.splice( i, 1 )
+                  break
+                }
+              }
+            }
+          }
+          
+          shader.replaceWith = function( replacement ) {
+      
+            for( var i = 0; i < this.sequencers.length; i++ ) {
+              this.sequencers[ i ].target = replacement
+              replacement.sequencers.push( this.sequencers[i] )
+            }
+      
+            for( var i = 0; i < this.mappingObjects.length; i++ ) {
+              var mapping = this.mappingObjects[ i ]
+
+              if( mapping.targets.length > 0 ) {
+                for( var j = 0; j < mapping.targets.length; j++ ) {
+                  var _mapping = mapping.targets[ j ]
+            
+                  if( replacement.mappingProperties[ mapping.name ] ) {
+                    _mapping[ 0 ].mapping.replace( replacement, mapping.name, mapping.Name )
+                  }else{ // replacement object does not have property that was assigned to mapping
+                    _mapping[ 0 ].mapping.remove()
+                  }
+                }
+              }
+            }
+      
+            this.remove()
+          }
+
+          shader.properties = shaderProps.properties
+          
+          Gibber.processArguments2( shader, Array.prototype.slice.call( arguments,0 ), shader.name )
+          
+          shader.mappings = []
+          
+          Object.defineProperty( shader, '_', {
+            get: function() { 
+              if( shader.seq.isRunning ) shader.seq.disconnect()  
+      
+              for( var i = 0; i < shader.mappings.length; i++ ) {
+                shader.mappings[ i ].remove() 
+              }
+      
+              if( shader.clearMarks ) // check required for modulators
+                shader.clearMarks()
+            
+              shader.remove(); 
+              //console.log( type + ' is removed.' ) 
+            },
+            set: function() {}
+          })
+          
+          return shader;
+        }
+        window[ name ] = constructor;
+      })()
+    }
+  },
+  
+  defineProperties: function( shader ) {
+    for( var key in shaders[ shader.name ].properties ) {
+      ( function( _shader ) {
+        var propName = key,
+            value = shaders[ shader.name ].properties[ propName ]
+        
+        Object.defineProperty( shader, propName, {
+          configurable: true,
+          get: function() { return value; },
+          set: function(v) {
+            value = v
+            shader.uniforms[ propName ].value = value
+          },
+        })
+                
+      })( shader )
+    }
+  },
+  
+  shader: {
+    remove : function() {
+      PP.composer.passes.splice( PP.composer.passes.indexOf( this ), 1 )
+      PP.fx.splice( PP.fx.indexOf( this ), 1 )
+      if( PP.fx.length > 0 ) {
+        PP.fx[ PP.fx.length - 1 ].renderToScreen = true;
+      }
+      for( var key in this.mappingProperties) {
+        var Key = key.charAt(0).toUpperCase() + key.slice(1)
+        
+        if( typeof this[ Key ].mapping === 'object' ) {
+          this[ Key ].mapping.remove()
+        }
+      }
+    }
+  },
+}
+
+var types = [
+  [ 'Vec2', 'Vector2', 'vec2' ],
+  [ 'Vec3', 'Vector3', 'vec3' ],
+  [ 'Vec4', 'Vector4', 'vec4' ],    
+]
+.forEach( function( element, index, array ) {
+  var type = element[ 0 ],
+    threeType = element[ 1 ] || element[ 0 ],
+    shaderType = element[ 2 ] || 'f'
+    
+  window[ type ] = function() {
+    var args = Array.prototype.slice.call( arguments, 0 ),
+        obj
+    
+    if( Array.isArray( args[0] ) ) {
+      var _args = []
+      for( var i = 0; i < args[0].length; i++ ) {
+        _args[ i ] = args[0][ i ]
+      }
+      args = _args
+    }    
+        
+    obj = Gibber.construct( THREE[ threeType ], args )
+    
+    obj.name = type
+    obj.shaderType = shaderType
+    
+    return obj
+  }
+})
+
+var threeTypes = {
+  'vec2' : 'v2',
+  'vec3' : 'v3',
+  'vec4' : 'v4',
+  'int'  : 'i',
+  'float'  : 'f'
+}
+
+var getShaderInfo = function( value, type, _name ) {
+  var shaderType = null, threeType = null, shaderString = '', isArray = false
+  
+  if( type ) {
+    if( type in threeTypes ) {
+      shaderType = type
+    }else{
+      for( var key in threeTypes ) {
+        if( threeTypes[ key ] === type ) {
+          shaderType = key
+          break;
+        }
+      }
+    }
+  }else{
+    if( Array.isArray( value ) ) {
+      var arrayMember = value[ 0 ],
+          arrayMemberType = arrayMember.shaderType || typeof arrayMember
+          
+      if( arrayMemberType === 'number' ) {
+        var isInt = arrayMember % 1 === 0
+        
+        // check to make sure all elements are ints, otherwise use float
+        if( isInt ) { isInt = value.every( function( element ) { return element % 1 === 0 } ) }
+        
+        shaderType = isInt ? 'int' : 'float'
+      }else{
+        shaderType = arrayMemberType
+      }
+      isArray = true
+    }else if( typeof value === 'object' ){
+      shaderType = value.shaderType || 'float'
+    }else{
+      shaderType = typeof value
+      if( shaderType === 'number' ) {
+        console.log("CHECKING FLOAT VS INT")
+        shaderType = value % 1 === 0 ? 'int' : 'float'
+      } 
+    }
+  }
+  
+  shaderString = "uniform " + shaderType + " " + _name
+  
+  shaderString += isArray ? '[' + value.length + '];\n' : ';\n'
+  
+  threeType = threeTypes[ shaderType ]
+  if( isArray ) {
+    threeType += shaderType.indexOf( 'vec' ) > - 1 ? 'v' : 'v1'
+  }
+  
+  return [ shaderType, threeType, shaderString ]
+}
+
+return PP
+
+}
+
+},{}],24:[function(_dereq_,module,exports){
+module.exports = function( Gibber, Graphics ) {
+  var GG = Gibber.Graphics
+	
+	var Shaders = {
+		make : function( frag, vert ) {
+			//console.log( ' MAKE SHADER ', frag, vert )
+	    var shader = {
+	    	uniforms: {
+	    		"tDiffuse": { type: "t", value: null },
+	        "amp": { type:"f", value:0 },
+	        "time": { type:"f", value:0 },
+	    	},
+			
+				fragmentShader :  frag || Shaders.defaultFragment,
+				vertexShader   :  vert || Shaders.defaultVertex,
+			}
+		
+			return shader
+		},
+		defaultFragment : [
+			"uniform float amp;",
+			"uniform sampler2D tDiffuse;",
+			"uniform float time;",
+			"varying vec2 p;",
+      "",
+			"void main() {",
+			"  gl_FragColor = texture2D( tDiffuse, p ).rgba;",
+			"}"
+		].join('\n'),
+		defaultVertex : [
+  		"varying vec2 p;",
+  		"void main() {",
+  			"p = uv;",
+  			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+  		"}"
+  	].join("\n"),
+		
+		Material : function( frag, vert ) {
+	    var shader = {},
+					fragText = typeof frag === 'object' ? frag.value : frag, 
+					vertText = typeof vert === 'object' ? vert.value : vert,
+					_shader = {
+			    	uniforms: {
+			    		"tDiffuse": { type: "t", value: null },
+			        "amp": { type:"f", value:0 },
+			        "time": { type:"f", value:0 },
+			    	},
+	
+						fragmentShader :  fragText || Shaders.defaultFragment,
+						vertexShader   :  vertText || Shaders.defaultVertex,
+					}
+      
+      _shader.fragmentShader = Graphics.PostProcessing.defs + _shader.fragmentShader
+	    
+      
+			var _material = new THREE.ShaderMaterial( _shader )
+	
+			// if columns are passed as arguments set them up for livecoding
+			if( typeof frag === 'object' ) { frag.shader = shader }
+			if( typeof vert === 'object' ) { vert.shader = shader }			
+			
+      
+			shader.fragmentText = _material.fragmentShader
+			shader.vertexText =   _material.vertexShader
+			console.log( shader.fragmentText )
+      
+			Object.defineProperty( shader, 'material', {
+				get: function() { return _material; },
+				set: function(v) { _material = v; if( this.target) this.target.mesh.material = _material; }
+			})
+			
+			var _target = null
+			Object.defineProperty( shader, 'target', {
+				get:function() { return _target },
+				set:function(v) { 
+					_target = v
+					if( _target.mesh ) {
+						_target.mesh.material = this.material;
+						_target.mesh.material.needsUpdate = true;
+					}
+				}
+			})
+			
+      Graphics.graph.push( shader )
+      
+      shader.update = function() {}
+      
+			var phase = 0
+			shader._update = function() {
+				for(var i = 0; i < shader.mods.length; i++) {
+					var mod = shader.mods[i],
+              val = shader[ mod.name ],
+              upper = mod.name
+          
+          upper = upper.charAt(0).toUpperCase() + upper.substr(1)
+					//if( phase % 60 === 0 ) { console.log( mod,val, upper ) }
+          
+          if( Array.isArray( val ) ) val = val[0]
+          
+					switch(mod.type) {
+						case "+":
+							shader[ upper ].value = typeof mod.modulator === "number" ? val + mod.modulator : val + mod.modulator.getValue() * mod.mult
+							break
+						case "++":
+							shader[ upper ].value = typeof mod.modulator === "number" ? val + mod.modulator : val + Math.abs( mod.modulator.getValue() * mod.mult )
+							break							
+						case "-" :
+							shader[ upper ].value = typeof mod.modulator === "number" ? val - mod.modulator : val - mod.modulator.getValue() * mod.mult
+							break
+						case "=":
+							shader[ upper ].value = typeof mod.modulator === "number" ? mod.modulator : mod.modulator.getValue() * mod.mult
+							break
+						default:
+						break;	
+					}
+          
+          shader[ upper ].oldSetter.call( this, shader[ upper ].value ) 
+				}
+				
+				shader.update()
+			}
+  
+			shader.mods = []
+			shader.mod = function( _name, _modulator, _type, _mult ) {
+				this.mods.push({ name:_name, modulator:_modulator, type:_type || "+", mult: _mult || 1 })
+			}
+      
+      shader.removeMod = function( name ) {
+        if( name ) {
+          for( var i = 0; i < this.mods.length; i++ ) {
+            var m = this.mods[ i ]
+            if( m.name === name ) {
+              this.mods.splice( i, 1 )
+              break
+            }
+          }
+        }
+      }
+			shader.remove = function() {}
+			
+			shader.uniforms = _shader.uniforms
+			
+      var mappingProperties = shader.mappingProperties = {
+				amp:{
+	        min:0, max:1,
+	        output: Gibber.LINEAR,
+	        timescale: 'graphics',
+	      },
+	      time:{
+	        min:0, max:1,
+	        output: Gibber.LINEAR,
+	        timescale: 'graphics',
+	      },
+			}
+			
+      shader.mappingObjects = []
+        
+      shader.uniform = function(_name, _value, _min, _max ) {
+        _min = isNaN( _min ) ? 0 : _min
+        _max = isNaN( _max ) ? 1 : _max        
+        _value = isNaN( _value ) ? _min + (_max - _min) / 2 : _value
+        
+        if( typeof shader.mappingProperties[ _name ] === 'undefined' ) {
+          mappingProperties[ _name ] = shader.mappingProperties[ _name ] = {
+            min:_min, max:_max,
+            output: Gibber.LINEAR,
+            timescale: 'graphics',
+          }
+        }
+        
+        if( typeof shader.uniforms[ _name ] === 'undefined' ) shader.uniforms[ _name ] = { type:'f', value:_value }
+              
+        Object.defineProperty( shader, _name, {
+          configurable: true,
+          get: function() { return _value; },
+          set: function(v) {
+            _value = v
+            shader.material.uniforms[ _name ].value = v
+          },
+        })
+        
+        Gibber.createProxyProperty( shader, _name )
+        shader[  _name.charAt(0).toUpperCase() + _name.slice(1) ].timescale = 'graphics' // TODO: why is this necessary?
+        
+        return shader
+      }
+            
+      for( var key in mappingProperties ) {
+        var prop = mappingProperties [ key ]
+        shader.uniform( key, prop.min, prop.max, shader[ key ] )
+      }
+			
+			return shader
+		}
+	}
+  
+  return Shaders
+	
+	//window.ShaderMaterial = GG.Shaders.Material
+  //Gibber.Graphics.makeFragmentShader = function( fragment ) {
+    // var gl = Gibber.Graphics.renderer.getContext()
+    // 
+    // var shader = gl.createShader( gl.FRAGMENT_SHADER )
+    //   // Set the shader source code.
+    // 
+    // gl.shaderSource( shader, fragment )
+    // 
+    // // Compile the shader
+    // gl.compileShader( shader )
+    // 
+    //   // Check if it compiled
+    // var success = gl.getShaderParameter( shader, gl.COMPILE_STATUS )
+    // if (!success) {
+    //   // Something went wrong during compilation; get the error
+    //   throw "could not compile shader:" + gl.getShaderInfoLog(shader);
+    //   return null
+    // } 
+}
+},{}],25:[function(_dereq_,module,exports){
+/*
+a = Video()
+
+b = Cube({ texture: a, scale:3 }).spin(.001)
+
+c = Dots({ scale:.25 })
+
+c.update = function() {
+  this.angle += .0005
+}
+
+c.scale.seq( Rndf(0,.35), 1/8 )
+
+f = Film()
+f.sCount = 8
+
+Graphics.resolution = 1
+
+a.stop()
+*/
+
+module.exports = function( Gibber, Graphics ) {
+  'use strict';
+  
+  var _videoElement, _videoTexture = null, video, Video = function() {
+    if( _videoTexture !== null ) { return _videoTexture }
+    
+    if( typeof _videoElement === 'undefined' ) {
+      video = document.createElement('video');
+      video.width    = 320;
+      video.height   = 240;
+      video.autoplay = true;
+    }
+    
+    if( _videoTexture === null ) {
+      navigator.webkitGetUserMedia(
+        { video:true, audio:false }, 
+        function(stream){ 
+          video.stream = stream;
+          video.src = webkitURL.createObjectURL( stream ); 
+        }, 
+        function( error ){ console.log( 'Failed to get a stream due to', error ); }
+      ); 
+      
+      _videoTexture = new THREE.Texture( video )
+      _videoTexture.video = video
+      
+      _videoTexture.remove = function() {
+        Gibber.Graphics.graph.splice( Gibber.Graphics.graph.indexOf( _videoTexture ), 1 )
+        _videoTexture = null
+        video.stream.stop()
+      }
+      
+      _videoTexture.stop = function() {
+        Gibber.Graphics.graph.splice( Gibber.Graphics.graph.indexOf( _videoTexture ), 1 ) 
+        _videoTexture = null
+        video.stream.stop()
+      }
+      
+      _videoTexture.update = function() {}
+      _videoTexture._update = function() {
+        if( video.readyState === video.HAVE_ENOUGH_DATA ){
+          _videoTexture.needsUpdate = true;
+      	}
+      }
+      
+      Gibber.Graphics.graph.push( _videoTexture )
+    }
+    
+    return _videoTexture
+  }
+  
+  return Video 
+}
+},{}],26:[function(_dereq_,module,exports){
 !function() {
 "use strict"
 
@@ -3170,6 +5676,6 @@ var soloGroup = [],
 
 }()
 
-},{"./dollar":2}]},{},[3])
-(3)
+},{"./dollar":17}]},{},[18])
+(18)
 });

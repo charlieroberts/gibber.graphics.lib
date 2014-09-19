@@ -19,7 +19,7 @@ Graphics.resolution = 1
 a.stop()
 */
 
-( function() {
+module.exports = function( Gibber, Graphics ) {
   'use strict';
   
   var _videoElement, _videoTexture = null, video, Video = function() {
@@ -70,5 +70,5 @@ a.stop()
     return _videoTexture
   }
   
-  window.Video = Video
-})()
+  return Video 
+}

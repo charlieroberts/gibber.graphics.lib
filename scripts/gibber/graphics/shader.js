@@ -1,7 +1,7 @@
-(function() {
+module.exports = function( Gibber, Graphics ) {
   var GG = Gibber.Graphics
 	
-	GG.Shaders = {
+	var Shaders = {
 		make : function( frag, vert ) {
 			//console.log( ' MAKE SHADER ', frag, vert )
 	    var shader = {
@@ -11,8 +11,8 @@
 	        "time": { type:"f", value:0 },
 	    	},
 			
-				fragmentShader :  frag || GG.Shaders.defaultFragment,
-				vertexShader   :  vert || GG.Shaders.defaultVertex,
+				fragmentShader :  frag || Shaders.defaultFragment,
+				vertexShader   :  vert || Shaders.defaultVertex,
 			}
 		
 			return shader
@@ -46,11 +46,11 @@
 			        "time": { type:"f", value:0 },
 			    	},
 	
-						fragmentShader :  fragText || GG.Shaders.defaultFragment,
-						vertexShader   :  vertText || GG.Shaders.defaultVertex,
+						fragmentShader :  fragText || Shaders.defaultFragment,
+						vertexShader   :  vertText || Shaders.defaultVertex,
 					}
       
-      _shader.fragmentShader = Gibber.Graphics.PostProcessing.defs + _shader.fragmentShader
+      _shader.fragmentShader = Graphics.PostProcessing.defs + _shader.fragmentShader
 	    
       
 			var _material = new THREE.ShaderMaterial( _shader )
@@ -81,7 +81,7 @@
 				}
 			})
 			
-      Gibber.Graphics.graph.push( shader )
+      Graphics.graph.push( shader )
       
       shader.update = function() {}
       
@@ -193,8 +193,10 @@
 			return shader
 		}
 	}
+  
+  return Shaders
 	
-	window.ShaderMaterial = GG.Shaders.Material
+	//window.ShaderMaterial = GG.Shaders.Material
   //Gibber.Graphics.makeFragmentShader = function( fragment ) {
     // var gl = Gibber.Graphics.renderer.getContext()
     // 
@@ -213,4 +215,4 @@
     //   throw "could not compile shader:" + gl.getShaderInfoLog(shader);
     //   return null
     // } 
-})();
+}

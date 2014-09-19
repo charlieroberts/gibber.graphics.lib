@@ -1,4 +1,4 @@
-(function() {
+module.exports = function( Gibber, Graphics ) {
 
 "use strict"
     
@@ -239,7 +239,7 @@ var processArgs = function( args, type, shape ) {
     },
   }
 
-var PP = Gibber.Graphics.PostProcessing = {
+var PP = {
   composer : null,
   fx: [],
   isRunning : false,
@@ -286,7 +286,10 @@ var PP = Gibber.Graphics.PostProcessing = {
 					  shader = shaderProps.init( arguments[0], arguments[1] )
           }
           
-          Gibber.createProxyProperties( shader, {} ) // call with empty object to initialize
+          // TODO: replace with Graphics.seq or Audio.seq
+          shader.seq = {}
+          
+          Gibber.createProxyProperties( shader, {  } ) // call with empty object to initialize
           
 					shader.uniform = function(_name, _value, _min, _max, type ) {
 						_min = isNaN( _min ) ? 0 : _min
@@ -613,4 +616,6 @@ var getShaderInfo = function( value, type, _name ) {
   return [ shaderType, threeType, shaderString ]
 }
 
-})()
+return PP
+
+}
