@@ -31,7 +31,8 @@ var Gibber = {
       var options = {
         globalize: true,
         canvas: null,
-        target: window
+        target: window,
+        graphicsMode:'3d'
       }
       
       if( typeof _options === 'object' ) $.extend( options, _options )
@@ -48,7 +49,7 @@ var Gibber = {
       }
       
       if( Gibber.Graphics ) {
-        Gibber.Graphics.init()
+        Gibber.Graphics.init( options.graphicsMode )
       }
       
       options.target.$ = $ // TODO: geez louise

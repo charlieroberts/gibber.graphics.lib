@@ -841,7 +841,8 @@ var Gibber = {
       var options = {
         globalize: true,
         canvas: null,
-        target: window
+        target: window,
+        graphicsMode:'3d'
       }
       
       if( typeof _options === 'object' ) $.extend( options, _options )
@@ -858,7 +859,7 @@ var Gibber = {
       }
       
       if( Gibber.Graphics ) {
-        Gibber.Graphics.init()
+        Gibber.Graphics.init( options.graphicsMode )
       }
       
       options.target.$ = $ // TODO: geez louise
@@ -1431,7 +1432,7 @@ module.exports = Gibber
 
   var TwoD = {
     Canvas : function( column, noThree ) {
-       var canvas = $( '<canvas>' )[0],
+       var canvas = document.createElement( 'canvas' ),//$( 'canvas' ),
           ctx = canvas.getContext( '2d' ),
           that = ctx,
           three = null;
@@ -1461,9 +1462,9 @@ module.exports = Gibber
       console.log( "NOTHREE 2", Graphics.noThree )
 
       three = $( '#three' )
-      three.show()
-      canvas.width = three.width()
-      canvas.height = three.height()
+      three.style.display = 'block'
+      canvas.width = parseInt( three.style.width )
+      canvas.height = parseInt( three.style.height )
       
       that.top = 0 
       that.bottom = canvas.height
@@ -1471,12 +1472,13 @@ module.exports = Gibber
       that.right = canvas.width
       that.center = { x: canvas.width / 2, y : canvas.height / 2 }
 
-      $( canvas ).css({ width: canvas.width, height: canvas.height })
+      // $( canvas ).css({ width: canvas.width, height: canvas.height })
       if( !Graphics.noThree ) {
         var tex = new THREE.Texture( canvas )
       }else{
-        three.empty()
-        three.append( canvas )
+        //three.empty()
+        three.innerHTML = ''
+        three.appendChild( canvas )
       }
       
       $.subscribe( '/layout/contentResize', function( e, msg ) {
@@ -1814,14 +1816,7 @@ module.exports = Gibber
         },
         width:canvas.width,
         height:canvas.height,
-        sprite : new THREE.Mesh(
-          new THREE.PlaneGeometry( canvas.width, canvas.height, 1, 1),
-          new THREE.MeshBasicMaterial({
-            map:tex,
-            affectedByDistance:false,
-            useScreenCoordinates:true
-          })
-        ),
+        sprite : null,
         hide: function() {
           if( Graphics.scene ) Graphics.scene.remove( that.sprite )
           Graphics.graph.splice( that, 1 )
@@ -1831,14 +1826,23 @@ module.exports = Gibber
           Graphics.graph.push( that )
         }
       })
-
-      that.texture.needsUpdate = true 
-
-      that.sprite.position.x = that.sprite.position.y = that.sprite.position.z = 0
       
       if( !Graphics.noThree ) {
+        that.sprite = new Graphics.THREE.Mesh(
+          new Graphics.THREE.PlaneGeometry( canvas.width, canvas.height, 1, 1),
+          new Graphics.THREE.MeshBasicMaterial({
+            map:tex,
+            affectedByDistance:false,
+            useScreenCoordinates:true
+          })
+        )
+        
+        that.sprite.position.x = that.sprite.position.y = that.sprite.position.z = 0
+        that.texture.needsUpdate = true 
+        
         Graphics.scene.add( that.sprite )
       }
+      
       Graphics.graph.push( that )
       
       cnvs = that
@@ -2444,10 +2448,18 @@ Graphics = {
   },
   
   init : function( mode, container, noThree ) {
-    //console.log("INIT", mode, noThree )
+    console.log("INIT", mode, noThree )
     this.canvas = document.createElement('div')//$( '<div>' )
     
-    if( typeof noThree !== 'undefined' ) this.noThree = noThree
+    if( typeof noThree !== 'undefined' ) { 
+      this.noThree = noThree
+    }else{
+      if( mode === '2d' ) {
+        this.noThree = true
+      }else{
+        this.noThree = false
+      }
+    }
     
     if( !noThree ) {
       if(!window.WebGLRenderingContext) {
@@ -2491,12 +2503,12 @@ Graphics = {
     // if( this.mode === '2d' ) this.noThree = true
     
     if( !this.noThree ) {
-      //try{
+      try{
         this.createScene( this.mode )
-        //}catch(e) {
-        //this.noThree = true
+      }catch(e) {
+        this.noThree = true
         //Gibber.Environment.Message.post( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
-        //}
+      }
     }else{
 
     }
@@ -2652,8 +2664,9 @@ Graphics = {
       //   }
       // }
       
-      this.PostProcessing.fx.length = 0
-      this.PostProcessing.isRunning = false
+      //this.PostProcessing.fx.length = 0
+      //this.PostProcessing.isRunning = false
+      
       //this.canvas.remove()
       //this.canvas = null
       //this.ctx = null

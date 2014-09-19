@@ -3,15 +3,12 @@
 
   var TwoD = {
     Canvas : function( column, noThree ) {
-       var canvas = $( '<canvas>' )[0],
+       var canvas = document.createElement( 'canvas' ),//$( 'canvas' ),
           ctx = canvas.getContext( '2d' ),
           that = ctx,
           three = null;
       
-      console.log( "NOTHREE - 1", noThree, Graphics.noThree )    
       if( typeof noThree === 'undefined' ) noThree = typeof Graphics.noThree !== 'undefined' ? Graphics.noThree : false
-      
-      console.log( "NOTHREE", noThree )
       
       if( Graphics.running ) Graphics.clear()
 
@@ -30,12 +27,10 @@
         Graphics.use( '2d', null, false )
       }
 
-      console.log( "NOTHREE 2", Graphics.noThree )
-
       three = $( '#three' )
-      three.show()
-      canvas.width = three.width()
-      canvas.height = three.height()
+      three.style.display = 'block'
+      canvas.width = parseInt( three.style.width )
+      canvas.height = parseInt( three.style.height )
       
       that.top = 0 
       that.bottom = canvas.height
@@ -43,12 +38,13 @@
       that.right = canvas.width
       that.center = { x: canvas.width / 2, y : canvas.height / 2 }
 
-      $( canvas ).css({ width: canvas.width, height: canvas.height })
+      // $( canvas ).css({ width: canvas.width, height: canvas.height })
       if( !Graphics.noThree ) {
         var tex = new THREE.Texture( canvas )
       }else{
-        three.empty()
-        three.append( canvas )
+        //three.empty()
+        three.innerHTML = ''
+        three.appendChild( canvas )
       }
       
       $.subscribe( '/layout/contentResize', function( e, msg ) {
@@ -65,7 +61,7 @@
         canvas: canvas,
         texture: tex || { needsUpdate: function() {} }, 
         remove : function() {
-          $( '#three' ).hide()
+          $( '#three' ).style.display = 'none'//hide()
           //Graphics.canvas = null
           //Graphics.ctx = null 
           //cnvs = null
@@ -386,14 +382,7 @@
         },
         width:canvas.width,
         height:canvas.height,
-        sprite : new THREE.Mesh(
-          new THREE.PlaneGeometry( canvas.width, canvas.height, 1, 1),
-          new THREE.MeshBasicMaterial({
-            map:tex,
-            affectedByDistance:false,
-            useScreenCoordinates:true
-          })
-        ),
+        sprite : null,
         hide: function() {
           if( Graphics.scene ) Graphics.scene.remove( that.sprite )
           Graphics.graph.splice( that, 1 )
@@ -403,14 +392,23 @@
           Graphics.graph.push( that )
         }
       })
-
-      that.texture.needsUpdate = true 
-
-      that.sprite.position.x = that.sprite.position.y = that.sprite.position.z = 0
       
       if( !Graphics.noThree ) {
+        that.sprite = new Graphics.THREE.Mesh(
+          new Graphics.THREE.PlaneGeometry( canvas.width, canvas.height, 1, 1),
+          new Graphics.THREE.MeshBasicMaterial({
+            map:tex,
+            affectedByDistance:false,
+            useScreenCoordinates:true
+          })
+        )
+        
+        that.sprite.position.x = that.sprite.position.y = that.sprite.position.z = 0
+        that.texture.needsUpdate = true 
+        
         Graphics.scene.add( that.sprite )
       }
+      
       Graphics.graph.push( that )
       
       cnvs = that
