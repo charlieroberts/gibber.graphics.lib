@@ -27,8 +27,6 @@ The library can be used with plain script tags, CommonJS or AMD style includes. 
 
 <script>
 Gibber.init() // REQUIRED!
-Gibber.Graphics.init()
-Gibber.Graphics.resolution = 1 // use high res. lower values can result in lower cpu usage.
 
 a = Gibber.Graphics.Geometry.Cube()
 a.spin(.0005)

@@ -47,6 +47,10 @@ var Gibber = {
         }
       }
       
+      if( Gibber.Graphics ) {
+        Gibber.Graphics.init()
+      }
+      
       options.target.$ = $ // TODO: geez louise
             
       Gibber.Utilities.init()

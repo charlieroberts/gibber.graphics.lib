@@ -857,6 +857,10 @@ var Gibber = {
         }
       }
       
+      if( Gibber.Graphics ) {
+        Gibber.Graphics.init()
+      }
+      
       options.target.$ = $ // TODO: geez louise
             
       Gibber.Utilities.init()
@@ -1881,8 +1885,6 @@ module.exports = function( Gibber, Graphics, THREE ){
 
 "use strict"
 
-
-
 var parametricFunc = function() {
   var points = rndf(-50,50,3)
   
@@ -2404,7 +2406,7 @@ Graphics = {
   width:    0,
   height:   0,
   running:  false,
-  resolution: .5,
+  resolution: 1,
   fps: null,
   graph: [],
   THREE: _dereq_('../../external/three/three.min'),

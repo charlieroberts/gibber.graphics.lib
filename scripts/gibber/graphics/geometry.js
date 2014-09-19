@@ -2,8 +2,6 @@ module.exports = function( Gibber, Graphics, THREE ){
 
 "use strict"
 
-
-
 var parametricFunc = function() {
   var points = rndf(-50,50,3)
   

@@ -10,7 +10,7 @@ Graphics = {
   width:    0,
   height:   0,
   running:  false,
-  resolution: .5,
+  resolution: 1,
   fps: null,
   graph: [],
   THREE: require('../../external/three/three.min'),
