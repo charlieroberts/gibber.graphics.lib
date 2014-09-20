@@ -2181,6 +2181,10 @@ var Gibber = {
     if( Gibber.Audio ) {
       Gibber.Audio.export( target )
     }
+    
+    if( Gibber.Graphics ) {
+      Gibber.Graphics.export( target )
+    }
   },
   
   init: function( _options ) {                        
@@ -2205,7 +2209,6 @@ var Gibber = {
       
         if( options.globalize ) {
           options.target.Master = Gibber.Audio.Master    
-          Gibber.export( options.target )        
         }else{
           $.extend( Gibber, Gibber.Audio )
         }
@@ -2213,6 +2216,10 @@ var Gibber = {
       
       if( Gibber.Graphics ) {
         Gibber.Graphics.init( options.graphicsMode )
+      }
+      
+      if( options.globalize ) {
+        Gibber.export( options.target )
       }
       
       options.target.$ = $ // TODO: geez louise
@@ -2784,6 +2791,10 @@ module.exports = Gibber
   var cnvs = null, Gibber, Graphics
 
   var TwoD = {
+    export: function( target ) {
+      target.Canvas = TwoD.canvas
+    },
+    
     Canvas : function( column, noThree ) {
        var canvas = document.createElement( 'canvas' ),//$( 'canvas' ),
           ctx = canvas.getContext( '2d' ),
@@ -3233,6 +3244,8 @@ module.exports = Gibber
 
 }()
 },{}],20:[function(_dereq_,module,exports){
+var $ = _dereq_('../dollar' )
+
 module.exports = function( Gibber, Graphics, THREE ){ 
 
 "use strict"
@@ -3336,7 +3349,12 @@ var types = {
      }
    }
 
-var Geometry = {}
+var Geometry = {
+  export: function( target ) {
+    console.log("EXPORTING", Geometry)
+    $.extend( target, Geometry )
+  }
+}
 
 for( var key in types) {
 
@@ -3745,7 +3763,7 @@ return Geometry;
 
 }
 
-},{}],21:[function(_dereq_,module,exports){
+},{"../dollar":17}],21:[function(_dereq_,module,exports){
 module.exports = function( Gibber, Graphics ) {
 
 "use strict"
@@ -3981,41 +3999,16 @@ Graphics = {
   graph: [],
   THREE: _dereq_('../../external/three/three.min'),
   
-  load : function() {
-    //$script( [ 'external/three/three.min', 'external/three/stats.min', 'gibber/graphics/geometry','gibber/graphics/2d', /*'gibber/graphics/shapes2d'*/ ], 'graphics', function() {
-    //   $script([
-    //     'external/three/postprocessing/EffectComposer',
-    //     'external/three/postprocessing/RenderPass',
-    //     'external/three/postprocessing/MaskPass',
-    //     'external/three/postprocessing/ShaderPass',
-    //     'external/three/postprocessing/CopyShader',
-    //     'external/three/postprocessing/shaders/DotScreenShader',
-    //     'external/three/postprocessing/DotScreenPass',
-    //     'external/three/postprocessing/FilmPass',
-    //     'external/three/postprocessing/shaders/FilmShader',      
-    //     'external/three/postprocessing/shaders/KaleidoShader',
-    //     'external/three/postprocessing/shaders/EdgeShader',
-    //     'external/three/postprocessing/shaders/FocusShader',      
-    //     'external/three/postprocessing/shaders/ShaderGodRays',      
-    //     'external/three/postprocessing/shaders/BleachBypassShader',
-    //     'external/three/postprocessing/shaders/ColorifyShader',
-    //   ], 'postprocessing', function() {
-    //     $script([
-    //       'gibber/graphics/postprocessing',
-    //       'gibber/graphics/shader', 
-    //       'gibber/graphics/gibber_shaders',
-    //       'gibber/graphics/video'
-    //     ], function() {
-    //       Graphics.PostProcessing.init()
-    //       window.Graphics = Graphics
-    //     })
-    //   })
-    // })
+  export: function( target ) {
+    Graphics.Geometry.export( target )
+    Graphics.TwoD.export( target )
+    Graphics.PostProcessing.export( target )
+    target.Video = Graphics.Video
   },
   
   init : function( mode, container, noThree ) {
     console.log("INIT", mode, noThree )
-    this.canvas = document.createElement('div')//$( '<div>' )
+    this.canvas = document.createElement('div')
     
     if( typeof noThree !== 'undefined' ) { 
       this.noThree = noThree
@@ -4044,18 +4037,10 @@ Graphics = {
     this.canvas.style.top = 0
     this.canvas.style.position = this.canvas.parent === window ? 'fixed' : 'absolute'
     this.canvas.style.float    = this.canvas.parent === window ? 'none' : 'left'
+    this.canvas.style.overflow = 'hidden'
     
     this.canvas.setAttribute( 'id', 'three' )
     
-    // this.canvas.css({
-    //     left:0,
-    //     top:0,
-    //     position: this.canvas.parent === window ? 'fixed' : 'absolute',
-    //     float: this.canvas.parent === window ? 'none' : 'left',
-    //     overflow:'hidden'
-    //   })
-    //   .attr( 'id', 'three' )
-
     if( this.canvas.parent === window ) { 
       document.querySelector('body').appendChild( this.canvas )
     }else{
@@ -4066,7 +4051,7 @@ Graphics = {
     this.mode = mode || '3d'
     
     //console.log( this.mode )
-    // if( this.mode === '2d' ) this.noThree = true
+    if( this.mode === '2d' ) this.noThree = true
     
     if( !this.noThree ) {
       try{
@@ -4592,6 +4577,9 @@ var processArgs = function( args, type, shape ) {
   }
 
 var PP = {
+  export: function( target ) {
+    
+  },
   composer : null,
   fx: [],
   isRunning : false,
@@ -5223,8 +5211,6 @@ module.exports = function( Gibber, Graphics ) {
   Video = function() {
     if( _videoTexture !== null ) { return _videoTexture }
     
-    console.log( _videoTexture, _videoElement )
-    
     if( typeof _videoElement === 'undefined' ) {
       video = document.createElement('video');
       video.width    = 320;
@@ -5233,7 +5219,6 @@ module.exports = function( Gibber, Graphics ) {
     }
     
     if( _videoTexture === null ) {
-      console.log( 'GET USER MEDIA' )
       navigator.webkitGetUserMedia(
         { video:true, audio:false }, 
         function(stream){ 

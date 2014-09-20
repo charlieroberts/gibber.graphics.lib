@@ -18,6 +18,10 @@ var Gibber = {
     if( Gibber.Audio ) {
       Gibber.Audio.export( target )
     }
+    
+    if( Gibber.Graphics ) {
+      Gibber.Graphics.export( target )
+    }
   },
   
   init: function( _options ) {                        
@@ -42,7 +46,6 @@ var Gibber = {
       
         if( options.globalize ) {
           options.target.Master = Gibber.Audio.Master    
-          Gibber.export( options.target )        
         }else{
           $.extend( Gibber, Gibber.Audio )
         }
@@ -50,6 +53,10 @@ var Gibber = {
       
       if( Gibber.Graphics ) {
         Gibber.Graphics.init( options.graphicsMode )
+      }
+      
+      if( options.globalize ) {
+        Gibber.export( options.target )
       }
       
       options.target.$ = $ // TODO: geez louise

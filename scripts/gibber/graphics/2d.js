@@ -2,6 +2,10 @@
   var cnvs = null, Gibber, Graphics
 
   var TwoD = {
+    export: function( target ) {
+      target.Canvas = TwoD.canvas
+    },
+    
     Canvas : function( column, noThree ) {
        var canvas = document.createElement( 'canvas' ),//$( 'canvas' ),
           ctx = canvas.getContext( '2d' ),

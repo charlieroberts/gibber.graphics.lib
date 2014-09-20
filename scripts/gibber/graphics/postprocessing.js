@@ -240,6 +240,9 @@ var processArgs = function( args, type, shape ) {
   }
 
 var PP = {
+  export: function( target ) {
+    
+  },
   composer : null,
   fx: [],
   isRunning : false,

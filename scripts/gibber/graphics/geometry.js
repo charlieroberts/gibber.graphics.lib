@@ -1,3 +1,5 @@
+var $ = require('../dollar' )
+
 module.exports = function( Gibber, Graphics, THREE ){ 
 
 "use strict"
@@ -101,7 +103,12 @@ var types = {
      }
    }
 
-var Geometry = {}
+var Geometry = {
+  export: function( target ) {
+    console.log("EXPORTING", Geometry)
+    $.extend( target, Geometry )
+  }
+}
 
 for( var key in types) {
 
