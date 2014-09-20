@@ -5216,8 +5216,14 @@ a.stop()
 module.exports = function( Gibber, Graphics ) {
   'use strict';
   
-  var _videoElement, _videoTexture = null, video, Video = function() {
+  var _videoElement, 
+      _videoTexture = null, 
+      video, 
+      
+  Video = function() {
     if( _videoTexture !== null ) { return _videoTexture }
+    
+    console.log( _videoTexture, _videoElement )
     
     if( typeof _videoElement === 'undefined' ) {
       video = document.createElement('video');
@@ -5227,6 +5233,7 @@ module.exports = function( Gibber, Graphics ) {
     }
     
     if( _videoTexture === null ) {
+      console.log( 'GET USER MEDIA' )
       navigator.webkitGetUserMedia(
         { video:true, audio:false }, 
         function(stream){ 
@@ -5236,17 +5243,17 @@ module.exports = function( Gibber, Graphics ) {
         function( error ){ console.log( 'Failed to get a stream due to', error ); }
       ); 
       
-      _videoTexture = new THREE.Texture( video )
+      _videoTexture = new Graphics.THREE.Texture( video )
       _videoTexture.video = video
       
       _videoTexture.remove = function() {
-        Gibber.Graphics.graph.splice( Gibber.Graphics.graph.indexOf( _videoTexture ), 1 )
+        Graphics.graph.splice( Graphics.graph.indexOf( _videoTexture ), 1 )
         _videoTexture = null
         video.stream.stop()
       }
       
       _videoTexture.stop = function() {
-        Gibber.Graphics.graph.splice( Gibber.Graphics.graph.indexOf( _videoTexture ), 1 ) 
+        Graphics.graph.splice( Graphics.graph.indexOf( _videoTexture ), 1 ) 
         _videoTexture = null
         video.stream.stop()
       }
@@ -5258,7 +5265,7 @@ module.exports = function( Gibber, Graphics ) {
       	}
       }
       
-      Gibber.Graphics.graph.push( _videoTexture )
+      Graphics.graph.push( _videoTexture )
     }
     
     return _videoTexture
