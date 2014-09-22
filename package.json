@@ -19,7 +19,7 @@
   "bugs": {
     "url": "https://github.com/charlieroberts/gibber.lib/issues"
   },
-  "main": "./build/gibber.graphics.lib.min.js",
+  "main": "./build/gibber.graphics.lib.js",
   "scripts": {},
   "keywords": [
     "graphics",
