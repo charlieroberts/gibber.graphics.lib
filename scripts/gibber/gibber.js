@@ -619,6 +619,7 @@ var Gibber = {
 Gibber.Utilities = require( './utilities' )( Gibber )
 //Gibber.Audio = require( './audio' )( Gibber )
 Gibber.Graphics = require( './graphics/graphics' )( Gibber )
+Gibber.mappings = require( './mappings' )( Gibber, null )
 
 module.exports = Gibber
 

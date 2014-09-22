@@ -1,9 +1,7 @@
-!function() {  
+// TODO: add Map to utilities? breaks graphics currently...
+
+module.exports = function( Gibber, Gibberish ) {  
   var mappings = {
-    outputCurves: {
-      LINEAR:0,
-      LOGARITHMIC:1
-    },
     audio : {
       graphics: function( target, from ) {
 				if( typeof from.object.track === 'undefined' ) from.object.track = {}
@@ -633,7 +631,12 @@
         return mapping
       }
     },
-  }
+  } 
   
-  module.exports = mappings
-}()
+  return mappings
+}
+
+module.exports.outputCurves = {
+  LINEAR:0,
+  LOGARITHMIC:1
+}

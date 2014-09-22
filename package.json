@@ -20,9 +20,7 @@
     "url": "https://github.com/charlieroberts/gibber.lib/issues"
   },
   "main": "./build/gibber.graphics.lib.min.js",
-  "scripts": {
-    "test": "node ./scripts/tests/gibber.graphics.lib.test.js"
-  },
+  "scripts": {},
   "keywords": [
     "graphics",
     "2d",
@@ -32,13 +30,6 @@
     "glsl",
     "gibber"
   ],
-  "author": {
-    "name": "Charlie Roberts",
-    "email": "charlie@charlie-roberts.com",
-    "url": "http://www.charlie-roberts.com/"
-  },
-  "license": "MIT",
-  "readmeFilename": "README.md",
-  "_id": "gibber.lib@0.1.1",
-  "_from": "gibber.lib@"
+  "author": "Charlie Roberts <charlie@charlie-roberts.com> (http://www.charlie-roberts.com/)",
+  "license": "MIT"
 }
