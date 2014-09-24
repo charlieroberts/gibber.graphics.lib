@@ -203,6 +203,11 @@ var Shaders = {
   
     return shader
   },
+  export: function( target ) {
+    target.Pixellate = Shaders.Pixellate
+    target.Stripes = Shaders.Stripes
+    target.Circles = Shaders.Circles
+  },
 }
 
 

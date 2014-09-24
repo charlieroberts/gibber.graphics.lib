@@ -105,7 +105,6 @@ var types = {
 
 var Geometry = {
   export: function( target ) {
-    console.log("EXPORTING", Geometry)
     $.extend( target, Geometry )
   }
 }
@@ -512,6 +511,8 @@ for( var key in types) {
 
 //window.Knot = window.TorusKnot
 //delete window.TorusKnot 
+
+Geometry.Knot = Geometry.TorusKnot
 
 return Geometry; 
 

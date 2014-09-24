@@ -5,6 +5,7 @@
 var $ = require('../dollar'),
 
 Graphics = {
+  Color: require( 'color' ),
   canvas :  null,
   ctx:      null,
   width:    0,
@@ -19,11 +20,12 @@ Graphics = {
     Graphics.Geometry.export( target )
     Graphics.TwoD.export( target )
     Graphics.PostProcessing.export( target )
+    Graphics.GibberShaders.export( target )
     target.Video = Graphics.Video
   },
   
   init : function( mode, container, noThree ) {
-    console.log("INIT", mode, noThree )
+    // console.log("INIT", mode, noThree )
     this.canvas = document.createElement('div')
     
     if( typeof noThree !== 'undefined' ) { 
@@ -42,7 +44,6 @@ Graphics = {
       }
     }
     
-    //console.log( this.noThree, noThree )
     if( this.noThree !== noThree ) {
       //Gibber.Environment.Message.post( 'Your browser does not support WebGL. 2D drawing will work, but 3D geometries and shaders are not supported.' )
     }
@@ -69,11 +70,15 @@ Graphics = {
     //console.log( this.mode )
     if( this.mode === '2d' ) this.noThree = true
     
+    
     if( !this.noThree ) {
       try{
+        //console.log( 'creating scene....')
         this.createScene( this.mode )
       }catch(e) {
+        console.log(e)
         this.noThree = true
+        console.log( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
         //Gibber.Environment.Message.post( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
       }
     }else{
@@ -132,8 +137,13 @@ Graphics = {
     this.renderer = new Graphics.THREE.WebGLRenderer();
     
     //console.log( "THREE", $('#three') )
+    var _3 = $('#three')
     
-    $( '#three' ).appendChild( this.renderer.domElement )
+    if( _3.append ) {
+      _3.append( this.renderer.domElement )
+    }else{
+      _3.appendChild( this.renderer.domElement )
+    }
     
     this.assignWidthAndHeight()
 		this.scene = new Graphics.THREE.Scene();
@@ -167,8 +177,13 @@ Graphics = {
   },
   
   use : function( mode ) {
-    $( '#three' ).style.display = 'block'
-    //$( '#three' ).show()
+    var _3 = $('#three')
+    
+    if( _3.show ) {
+      $( '#three' ).show()      
+    }else{
+      $( '#three' ).style.display = 'block'
+    }
 
     if( mode === '2d' ) {
       console.log("Now drawing in 2d.")

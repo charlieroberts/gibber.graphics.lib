@@ -3,7 +3,7 @@
 
   var TwoD = {
     export: function( target ) {
-      target.Canvas = TwoD.canvas
+      target.Canvas = TwoD.Canvas
     },
     
     Canvas : function( column, noThree ) {
@@ -32,7 +32,12 @@
       }
 
       three = $( '#three' )
+      if( three.length ) {
+        three = three[0]
+      }
+
       three.style.display = 'block'
+      
       canvas.width = parseInt( three.style.width )
       canvas.height = parseInt( three.style.height )
       
@@ -42,22 +47,19 @@
       that.right = canvas.width
       that.center = { x: canvas.width / 2, y : canvas.height / 2 }
 
-      // $( canvas ).css({ width: canvas.width, height: canvas.height })
       if( !Graphics.noThree ) {
         var tex = new THREE.Texture( canvas )
       }else{
-        //three.empty()
         three.innerHTML = ''
         three.appendChild( canvas )
       }
       
       $.subscribe( '/layout/contentResize', function( e, msg ) {
-        console.log( msg )
-        three.width( msg.width )
-        three.height( msg.height )
-        //canvas.width = msg.width
-        //canvas.height = msg.height
-        $( canvas ).css({ width: msg.width, height: msg.height })
+        three.setAttribute( 'width', msg.width )
+        three.setAttribute( 'height', msg.height )
+
+        canvas.style.width = msg.width
+        canvas.style.height = msg.height
       })
       
       
@@ -65,7 +67,7 @@
         canvas: canvas,
         texture: tex || { needsUpdate: function() {} }, 
         remove : function() {
-          $( '#three' ).style.display = 'none'//hide()
+          three.style.display = 'none'
           //Graphics.canvas = null
           //Graphics.ctx = null 
           //cnvs = null

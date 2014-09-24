@@ -14,12 +14,13 @@
     "vinyl-buffer": "0.0.0",
     "gulp-insert": "~0.4.0",
     "gulp-browserify": "~0.5.0",
-    "gulp-rename": "~1.2.0"
+    "gulp-rename": "~1.2.0",
+    "color": "~0.7.1"
   },
   "bugs": {
     "url": "https://github.com/charlieroberts/gibber.lib/issues"
   },
-  "main": "./build/gibber.graphics.lib.js",
+  "main": "./scripts/gibber/gibber.js",
   "scripts": {},
   "keywords": [
     "graphics",
