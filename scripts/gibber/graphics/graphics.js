@@ -25,7 +25,7 @@ Graphics = {
   },
   
   init : function( mode, container, noThree ) {
-    // console.log("INIT", mode, noThree )
+    console.log("INIT", mode, noThree )
     this.canvas = document.createElement('div')
     
     if( typeof noThree !== 'undefined' ) { 
@@ -48,8 +48,15 @@ Graphics = {
       //Gibber.Environment.Message.post( 'Your browser does not support WebGL. 2D drawing will work, but 3D geometries and shaders are not supported.' )
     }
     
-    this.canvas.parent = typeof column === 'undefined' || column === null ? window : column.element
+    if( typeof container === 'undefined' || container === null ) {
+      this.canvas.parent = window
+    }else{
+      this.canvas.parent = container.element
+      container.element.find( '.editor' ).remove()
+    }
+
     this.assignWidthAndHeight( true )
+    
     this.canvas.style.left = 0
     this.canvas.style.top = 0
     this.canvas.style.position = this.canvas.parent === window ? 'fixed' : 'absolute'
@@ -61,7 +68,11 @@ Graphics = {
     if( this.canvas.parent === window ) { 
       document.querySelector('body').appendChild( this.canvas )
     }else{
-      container.appendChild( this.canvas )
+      if( container.element.length ) {
+        container.element.append( this.canvas )
+      }else{
+        container.element.appendChild( this.canvas )
+      }
     }
     
     this.render = this.render.bind( this )
@@ -73,7 +84,7 @@ Graphics = {
     
     if( !this.noThree ) {
       try{
-        //console.log( 'creating scene....')
+        console.log( 'creating scene....')
         this.createScene( this.mode )
       }catch(e) {
         console.log(e)
@@ -239,20 +250,21 @@ Graphics = {
       }
 
       this.graph.length = 0
-      // if( this.PostProcessing ) this.PostProcessing.fx.length = 0
-      // if( !this.noThree ) {
-      //   for( var j = this.PostProcessing.fx - 1; j >= 0; j-- ) {
-      //     this.PostProcessing.fx[ j ].remove()
-      //   }
-      // }
+      if( this.PostProcessing ) this.PostProcessing.fx.length = 0
+      if( !this.noThree ) {
+        for( var j = this.PostProcessing.fx - 1; j >= 0; j-- ) {
+          this.PostProcessing.fx[ j ].remove()
+        }
+      }
       
-      //this.PostProcessing.fx.length = 0
-      //this.PostProcessing.isRunning = false
+      this.PostProcessing.fx.length = 0
+      this.PostProcessing.isRunning = false
       
-      //this.canvas.remove()
-      //this.canvas = null
-      //this.ctx = null
-      this.running = false
+      // something in hear messes thigns up...
+      // this.canvas.remove()
+      // this.canvas = null
+      // this.ctx = null
+      // this.running = false
     }
   },
   render : function() {
@@ -303,18 +315,26 @@ Graphics = {
 	},
   
   assignWidthAndHeight : function( isInitialSetting ) { // don't run final lines before renderer is setup...
-    this.width  = this.canvas.parent === window ? window.innerWidth  : this.canvas.parent.offsetWidth //$( this.canvas.parent ).width() // either column or window... 
-    this.height = this.canvas.parent === window ? window.innerHeight : this.canvas.parent.offsetHeight //$( window ).height()
-    if( document.querySelector( '#header' ) !== null ) {
+    Graphics.width  = Graphics.canvas.parent === window ? window.innerWidth  : (Graphics.canvas.parent.offsetWidth || Graphics.canvas.parent.width() ) //$( this.canvas.parent ).width() // either column or window... 
+    Graphics.height = Graphics.canvas.parent === window ? window.innerHeight : (Graphics.canvas.parent.offsetHeight || Graphics.canvas.parent.height() )//$( window ).height()
+    if( document.querySelector( '#header' ) !== null && Graphics.canvas.parent === window ) {
       if( Gibber.Environment.Layout.fullScreenColumn === null) { 
-        this.height -= $( "#header" ).height() + $( "tfoot" ).height()
+        Graphics.height -= $( "#header" ).height() + $( "tfoot" ).height()
       }
     }
     
-    this.canvas.style.top = document.querySelector( '#header' ) !== null ? document.querySelector( '#header' ).offsetHeight : 0
-    this.canvas.style.width = this.width + 'px'
-    this.canvas.style.height = this.height + 'px'
-    this.canvas.style.zIndex = - 1
+    if( Graphics.canvas.parent === window ) {
+      Graphics.canvas.style.top = document.querySelector( '#header' ) !== null ? document.querySelector( '#header' ).offsetHeight : 0
+    }else{
+      var ch = Graphics.canvas.parent.find( '.columnHeader' ).outerHeight()
+      Graphics.canvas.style.top = ch
+      Graphics.height -= ch
+      
+      Graphics.width -= Graphics.canvas.parent.find( '.resizeHandle' ).outerWidth()
+    }
+    Graphics.canvas.style.width = Graphics.width + 'px'
+    Graphics.canvas.style.height = Graphics.height + 'px'
+    Graphics.canvas.style.zIndex = - 1
     
     // this.canvas.css({
 //       top: $( '#header' ).height(),
@@ -323,10 +343,10 @@ Graphics = {
 //       zIndex: -1
 //     })
     
-    if( !isInitialSetting ) {
-  		this.renderer.setSize( this.width * this.resolution, this.height * this.resolution );
-      this.renderer.domElement.style.width = this.width + 'px'
-      this.renderer.domElement.style.height = this.height + 'px'      
+    if( !isInitialSetting && Graphics.mode !== '2d' ) {
+  		Graphics.renderer.setSize( Graphics.width * Graphics.resolution, Graphics.height * Graphics.resolution );
+      Graphics.renderer.domElement.style.width = Graphics.width + 'px'
+      Graphics.renderer.domElement.style.height = Graphics.height + 'px'      
       
       //$( this.renderer.domElement ).css({ width: this.width, height: this.height })
     }

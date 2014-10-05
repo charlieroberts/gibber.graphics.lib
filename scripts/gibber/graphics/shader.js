@@ -52,6 +52,15 @@ module.exports = function( Gibber, Graphics ) {
       
       _shader.fragmentShader = Graphics.PostProcessing.defs + _shader.fragmentShader
 	    
+      if( !Gibber.Graphics.running ) {
+        console.log( "GRAPHICS INIT")
+        Gibber.Graphics.init( '3d' )
+        console.log( "MODE", Gibber.Graphics.mode )
+      }else{
+        if( Gibber.Graphics.mode === '2d' ) {
+          Gibber.Graphics.use( '3d' )
+        }
+      }
       
 			var _material = new THREE.ShaderMaterial( _shader )
 	
@@ -62,7 +71,6 @@ module.exports = function( Gibber, Graphics ) {
       
 			shader.fragmentText = _material.fragmentShader
 			shader.vertexText =   _material.vertexShader
-			console.log( shader.fragmentText )
       
 			Object.defineProperty( shader, 'material', {
 				get: function() { return _material; },

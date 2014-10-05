@@ -241,7 +241,9 @@ var processArgs = function( args, type, shape ) {
 
 var PP = {
   export: function( target ) {
-    
+    for( var key in shaders ) {
+      target[ key ] = PP[ key ]
+    }
   },
   composer : null,
   fx: [],
@@ -277,7 +279,7 @@ var PP = {
           //console.log( shaderProps, shaderProps.shaders, shaderProps.shaders[0] )
           //var shader = shaderProps.shaders[0].init({ center:undefined, angle:.5, scale:.035, mix:.1 })
           if( Gibber.Graphics.canvas === null){
-            Gibber.Graphics.init('2d', null, false)
+            Gibber.Graphics.init( '3d' )
           }
           
           Gibber.Graphics.running = true 
@@ -312,7 +314,7 @@ var PP = {
                 threeType  = info[1],
                 shaderString = info[2]
             
-            console.log( "TYPE = ", shaderType, threeType )
+            //console.log( "TYPE = ", shaderType, threeType )
             
 						if( typeof shader.uniforms[ _name ] === 'undefined' && ( shader.columnF ) ) {
               var text = shaderString
@@ -485,7 +487,7 @@ var PP = {
           
           return shader;
         }
-        window[ name ] = constructor;
+        PP[ name ] = constructor;
       })()
     }
   },

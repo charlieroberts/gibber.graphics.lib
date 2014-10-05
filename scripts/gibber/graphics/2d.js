@@ -18,7 +18,7 @@
 
       Graphics.running = true
 
-      if( cnvs !== null ) {
+      if( cnvs !== null && cnvs.sprite !== null) {
         cnvs.sprite.remove()
         try{
           Graphics.scene.remove( cnvs.sprite )
@@ -35,17 +35,15 @@
       if( three.length ) {
         three = three[0]
       }
-
+      
+      if( column ) column.onclose = function() { Graphics.canvas = null }
+      
       three.style.display = 'block'
       
       canvas.width = parseInt( three.style.width )
       canvas.height = parseInt( three.style.height )
-      
-      that.top = 0 
-      that.bottom = canvas.height
-      that.left = 0
-      that.right = canvas.width
-      that.center = { x: canvas.width / 2, y : canvas.height / 2 }
+      canvas.style.width = canvas.width + 'px'
+      canvas.style.height = canvas.height + 'px'      
 
       if( !Graphics.noThree ) {
         var tex = new THREE.Texture( canvas )
@@ -54,17 +52,26 @@
         three.appendChild( canvas )
       }
       
-      $.subscribe( '/layout/contentResize', function( e, msg ) {
-        three.setAttribute( 'width', msg.width )
-        three.setAttribute( 'height', msg.height )
-
-        canvas.style.width = msg.width
-        canvas.style.height = msg.height
-      })
+      Graphics.assignWidthAndHeight()
+      
+      // $.subscribe( '/layout/contentResize', function( e, msg ) {
+      //   three.setAttribute( 'width', msg.width )
+      //   three.setAttribute( 'height', msg.height )
+      // 
+      //   canvas.style.width = msg.width
+      //   canvas.style.height = msg.height
+      // })
       
       
       $.extend( that, {
+        top: 0,
+        bottom: canvas.height,
+        left:0,
+        right:canvas.width,
+        center: { x: canvas.width / 2, y : canvas.height / 2 },
+            
         canvas: canvas,
+        is3D: Graphics.mode === '3d',
         texture: tex || { needsUpdate: function() {} }, 
         remove : function() {
           three.style.display = 'none'

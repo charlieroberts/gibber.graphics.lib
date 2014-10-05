@@ -4237,7 +4237,7 @@ module.exports = Gibber
 
       Graphics.running = true
 
-      if( cnvs !== null ) {
+      if( cnvs !== null && cnvs.sprite !== null) {
         cnvs.sprite.remove()
         try{
           Graphics.scene.remove( cnvs.sprite )
@@ -4254,17 +4254,15 @@ module.exports = Gibber
       if( three.length ) {
         three = three[0]
       }
-
+      
+      if( column ) column.onclose = function() { Graphics.canvas = null }
+      
       three.style.display = 'block'
       
       canvas.width = parseInt( three.style.width )
       canvas.height = parseInt( three.style.height )
-      
-      that.top = 0 
-      that.bottom = canvas.height
-      that.left = 0
-      that.right = canvas.width
-      that.center = { x: canvas.width / 2, y : canvas.height / 2 }
+      canvas.style.width = canvas.width + 'px'
+      canvas.style.height = canvas.height + 'px'      
 
       if( !Graphics.noThree ) {
         var tex = new THREE.Texture( canvas )
@@ -4273,17 +4271,26 @@ module.exports = Gibber
         three.appendChild( canvas )
       }
       
-      $.subscribe( '/layout/contentResize', function( e, msg ) {
-        three.setAttribute( 'width', msg.width )
-        three.setAttribute( 'height', msg.height )
-
-        canvas.style.width = msg.width
-        canvas.style.height = msg.height
-      })
+      Graphics.assignWidthAndHeight()
+      
+      // $.subscribe( '/layout/contentResize', function( e, msg ) {
+      //   three.setAttribute( 'width', msg.width )
+      //   three.setAttribute( 'height', msg.height )
+      // 
+      //   canvas.style.width = msg.width
+      //   canvas.style.height = msg.height
+      // })
       
       
       $.extend( that, {
+        top: 0,
+        bottom: canvas.height,
+        left:0,
+        right:canvas.width,
+        center: { x: canvas.width / 2, y : canvas.height / 2 },
+            
         canvas: canvas,
+        is3D: Graphics.mode === '3d',
         texture: tex || { needsUpdate: function() {} }, 
         remove : function() {
           three.style.display = 'none'
@@ -5447,7 +5454,7 @@ Graphics = {
   },
   
   init : function( mode, container, noThree ) {
-    // console.log("INIT", mode, noThree )
+    console.log("INIT", mode, noThree )
     this.canvas = document.createElement('div')
     
     if( typeof noThree !== 'undefined' ) { 
@@ -5470,8 +5477,15 @@ Graphics = {
       //Gibber.Environment.Message.post( 'Your browser does not support WebGL. 2D drawing will work, but 3D geometries and shaders are not supported.' )
     }
     
-    this.canvas.parent = typeof column === 'undefined' || column === null ? window : column.element
+    if( typeof container === 'undefined' || container === null ) {
+      this.canvas.parent = window
+    }else{
+      this.canvas.parent = container.element
+      container.element.find( '.editor' ).remove()
+    }
+
     this.assignWidthAndHeight( true )
+    
     this.canvas.style.left = 0
     this.canvas.style.top = 0
     this.canvas.style.position = this.canvas.parent === window ? 'fixed' : 'absolute'
@@ -5483,7 +5497,11 @@ Graphics = {
     if( this.canvas.parent === window ) { 
       document.querySelector('body').appendChild( this.canvas )
     }else{
-      container.appendChild( this.canvas )
+      if( container.element.length ) {
+        container.element.append( this.canvas )
+      }else{
+        container.element.appendChild( this.canvas )
+      }
     }
     
     this.render = this.render.bind( this )
@@ -5495,7 +5513,7 @@ Graphics = {
     
     if( !this.noThree ) {
       try{
-        //console.log( 'creating scene....')
+        console.log( 'creating scene....')
         this.createScene( this.mode )
       }catch(e) {
         console.log(e)
@@ -5661,20 +5679,21 @@ Graphics = {
       }
 
       this.graph.length = 0
-      // if( this.PostProcessing ) this.PostProcessing.fx.length = 0
-      // if( !this.noThree ) {
-      //   for( var j = this.PostProcessing.fx - 1; j >= 0; j-- ) {
-      //     this.PostProcessing.fx[ j ].remove()
-      //   }
-      // }
+      if( this.PostProcessing ) this.PostProcessing.fx.length = 0
+      if( !this.noThree ) {
+        for( var j = this.PostProcessing.fx - 1; j >= 0; j-- ) {
+          this.PostProcessing.fx[ j ].remove()
+        }
+      }
       
-      //this.PostProcessing.fx.length = 0
-      //this.PostProcessing.isRunning = false
+      this.PostProcessing.fx.length = 0
+      this.PostProcessing.isRunning = false
       
-      //this.canvas.remove()
-      //this.canvas = null
-      //this.ctx = null
-      this.running = false
+      // something in hear messes thigns up...
+      // this.canvas.remove()
+      // this.canvas = null
+      // this.ctx = null
+      // this.running = false
     }
   },
   render : function() {
@@ -5725,18 +5744,26 @@ Graphics = {
 	},
   
   assignWidthAndHeight : function( isInitialSetting ) { // don't run final lines before renderer is setup...
-    this.width  = this.canvas.parent === window ? window.innerWidth  : this.canvas.parent.offsetWidth //$( this.canvas.parent ).width() // either column or window... 
-    this.height = this.canvas.parent === window ? window.innerHeight : this.canvas.parent.offsetHeight //$( window ).height()
-    if( document.querySelector( '#header' ) !== null ) {
+    Graphics.width  = Graphics.canvas.parent === window ? window.innerWidth  : (Graphics.canvas.parent.offsetWidth || Graphics.canvas.parent.width() ) //$( this.canvas.parent ).width() // either column or window... 
+    Graphics.height = Graphics.canvas.parent === window ? window.innerHeight : (Graphics.canvas.parent.offsetHeight || Graphics.canvas.parent.height() )//$( window ).height()
+    if( document.querySelector( '#header' ) !== null && Graphics.canvas.parent === window ) {
       if( Gibber.Environment.Layout.fullScreenColumn === null) { 
-        this.height -= $( "#header" ).height() + $( "tfoot" ).height()
+        Graphics.height -= $( "#header" ).height() + $( "tfoot" ).height()
       }
     }
     
-    this.canvas.style.top = document.querySelector( '#header' ) !== null ? document.querySelector( '#header' ).offsetHeight : 0
-    this.canvas.style.width = this.width + 'px'
-    this.canvas.style.height = this.height + 'px'
-    this.canvas.style.zIndex = - 1
+    if( Graphics.canvas.parent === window ) {
+      Graphics.canvas.style.top = document.querySelector( '#header' ) !== null ? document.querySelector( '#header' ).offsetHeight : 0
+    }else{
+      var ch = Graphics.canvas.parent.find( '.columnHeader' ).outerHeight()
+      Graphics.canvas.style.top = ch
+      Graphics.height -= ch
+      
+      Graphics.width -= Graphics.canvas.parent.find( '.resizeHandle' ).outerWidth()
+    }
+    Graphics.canvas.style.width = Graphics.width + 'px'
+    Graphics.canvas.style.height = Graphics.height + 'px'
+    Graphics.canvas.style.zIndex = - 1
     
     // this.canvas.css({
 //       top: $( '#header' ).height(),
@@ -5745,10 +5772,10 @@ Graphics = {
 //       zIndex: -1
 //     })
     
-    if( !isInitialSetting ) {
-  		this.renderer.setSize( this.width * this.resolution, this.height * this.resolution );
-      this.renderer.domElement.style.width = this.width + 'px'
-      this.renderer.domElement.style.height = this.height + 'px'      
+    if( !isInitialSetting && Graphics.mode !== '2d' ) {
+  		Graphics.renderer.setSize( Graphics.width * Graphics.resolution, Graphics.height * Graphics.resolution );
+      Graphics.renderer.domElement.style.width = Graphics.width + 'px'
+      Graphics.renderer.domElement.style.height = Graphics.height + 'px'      
       
       //$( this.renderer.domElement ).css({ width: this.width, height: this.height })
     }
@@ -6031,7 +6058,9 @@ var processArgs = function( args, type, shape ) {
 
 var PP = {
   export: function( target ) {
-    
+    for( var key in shaders ) {
+      target[ key ] = PP[ key ]
+    }
   },
   composer : null,
   fx: [],
@@ -6067,7 +6096,7 @@ var PP = {
           //console.log( shaderProps, shaderProps.shaders, shaderProps.shaders[0] )
           //var shader = shaderProps.shaders[0].init({ center:undefined, angle:.5, scale:.035, mix:.1 })
           if( Gibber.Graphics.canvas === null){
-            Gibber.Graphics.init('2d', null, false)
+            Gibber.Graphics.init( '3d' )
           }
           
           Gibber.Graphics.running = true 
@@ -6102,7 +6131,7 @@ var PP = {
                 threeType  = info[1],
                 shaderString = info[2]
             
-            console.log( "TYPE = ", shaderType, threeType )
+            //console.log( "TYPE = ", shaderType, threeType )
             
 						if( typeof shader.uniforms[ _name ] === 'undefined' && ( shader.columnF ) ) {
               var text = shaderString
@@ -6275,7 +6304,7 @@ var PP = {
           
           return shader;
         }
-        window[ name ] = constructor;
+        PP[ name ] = constructor;
       })()
     }
   },
@@ -6468,6 +6497,15 @@ module.exports = function( Gibber, Graphics ) {
       
       _shader.fragmentShader = Graphics.PostProcessing.defs + _shader.fragmentShader
 	    
+      if( !Gibber.Graphics.running ) {
+        console.log( "GRAPHICS INIT")
+        Gibber.Graphics.init( '3d' )
+        console.log( "MODE", Gibber.Graphics.mode )
+      }else{
+        if( Gibber.Graphics.mode === '2d' ) {
+          Gibber.Graphics.use( '3d' )
+        }
+      }
       
 			var _material = new THREE.ShaderMaterial( _shader )
 	
@@ -6478,7 +6516,6 @@ module.exports = function( Gibber, Graphics ) {
       
 			shader.fragmentText = _material.fragmentShader
 			shader.vertexText =   _material.vertexShader
-			console.log( shader.fragmentText )
       
 			Object.defineProperty( shader, 'material', {
 				get: function() { return _material; },
