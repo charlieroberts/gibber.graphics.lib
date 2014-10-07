@@ -7,6 +7,8 @@ var $ = require('../dollar'),
 Graphics = {
   Color: require( 'color' ),
   canvas :  null,
+  canvas2D: null,
+  canvas3D: null,
   ctx:      null,
   width:    0,
   height:   0,
@@ -14,6 +16,7 @@ Graphics = {
   resolution: 1,
   fps: null,
   graph: [],
+  initialized: false,
   THREE: require('../../external/three/three.min'),
   
   export: function( target ) {
@@ -26,7 +29,8 @@ Graphics = {
   
   init : function( mode, container, noThree ) {
     console.log("INIT", mode, noThree )
-    this.canvas = document.createElement('div')
+    //if( this.initialized ) return 
+    // this.canvas = document.createElement('div')
     
     if( typeof noThree !== 'undefined' ) { 
       this.noThree = noThree
@@ -42,6 +46,17 @@ Graphics = {
       if(!window.WebGLRenderingContext) {
         this.noThree = true
       }
+    }
+    
+    this.mode = mode || '3d'
+    console.log("MODE", this.mode)
+    if( this.mode === '3d' && this.canvas3D !== null ) {
+      this.canvas = this.canvas3D
+    }else if( this.mode === '2d' && this.canvas2D !== null ) {
+      this.canvas = this.canvas2D
+    }else{
+      console.log( 'CREATING GRAPHICS DIV' )
+      this.canvas = document.createElement('div')
     }
     
     if( this.noThree !== noThree ) {
@@ -62,6 +77,7 @@ Graphics = {
     this.canvas.style.position = this.canvas.parent === window ? 'fixed' : 'absolute'
     this.canvas.style.float    = this.canvas.parent === window ? 'none' : 'left'
     this.canvas.style.overflow = 'hidden'
+    this.canvas.style.display  = 'block'
     
     this.canvas.setAttribute( 'id', 'three' )
     
@@ -76,11 +92,9 @@ Graphics = {
     }
     
     this.render = this.render.bind( this )
-    this.mode = mode || '3d'
     
     //console.log( this.mode )
     if( this.mode === '2d' ) this.noThree = true
-    
     
     if( !this.noThree ) {
       try{
@@ -91,9 +105,15 @@ Graphics = {
         this.noThree = true
         console.log( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
         //Gibber.Environment.Message.post( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
+      }finally{
+        if( this.noThree ) {
+          this.canvas2D = this.canvas
+        }else{
+          this.canvas3D = this.canvas
+        }
       }
     }else{
-
+      this.canvas2D = this.canvas
     }
     
     var res = this.resolution, self = this
@@ -141,7 +161,9 @@ Graphics = {
       props.h -= $( 'tfoot' ).height()
       
       resize( null, props )  
-    })    
+    })
+    
+    this.initialized = true   
   },
   
   createScene : function( mode ) {		
@@ -261,10 +283,11 @@ Graphics = {
       this.PostProcessing.isRunning = false
       
       // something in hear messes thigns up...
-      // this.canvas.remove()
-      // this.canvas = null
-      // this.ctx = null
-      // this.running = false
+      this.canvas.style.display = 'none'
+      //this.canvas = null
+      //this.ctx = null
+      this.running = false
+      this.initialized = false
     }
   },
   render : function() {

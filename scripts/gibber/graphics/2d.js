@@ -12,55 +12,99 @@
           that = ctx,
           three = null;
       
-      if( typeof noThree === 'undefined' ) noThree = typeof Graphics.noThree !== 'undefined' ? Graphics.noThree : false
+      //if( typeof noThree === 'undefined' ) noThree = typeof Graphics.noThree !== 'undefined' ? Graphics.noThree : false
       
-      if( Graphics.running ) Graphics.clear()
+      //if( Graphics.running ) Graphics.clear()
 
-      Graphics.running = true
+      //Graphics.running = true
 
-      if( cnvs !== null && cnvs.sprite !== null) {
-        cnvs.sprite.remove()
-        try{
-          Graphics.scene.remove( cnvs.sprite )
-        }catch(e){ console.log("CANNOT REMOVE SPRITE") }
-      }
+      // if( cnvs !== null && cnvs.sprite !== null) {
+      //   cnvs.sprite.remove()
+      //   try{
+      //     Graphics.scene.remove( cnvs.sprite )
+      //   }catch(e){ console.log("CANNOT REMOVE SPRITE") }
+      // }
 
-      if( Graphics.canvas === null ) {
-        Graphics.init( '2d', column, false )
-      }else if( Graphics.mode === '3d' ) {
-        Graphics.use( '2d', null, false )
-      }
-
-      three = $( '#three' )
-      if( three.length ) {
-        three = three[0]
-      }
+      // if( Graphics.canvas2D === null ) {
+      //   Graphics.init( '2d', column, false )
+      // }else{
+      //   Graphics.canvas2D.style.display = 'block'
+      // }
       
-      if( column ) column.onclose = function() { Graphics.canvas = null }
-      
-      three.style.display = 'block'
-      
-      canvas.width = parseInt( three.style.width )
-      canvas.height = parseInt( three.style.height )
-      canvas.style.width = canvas.width + 'px'
-      canvas.style.height = canvas.height + 'px'      
+      // if( Graphics.canvas === null ) {
+//         Graphics.init( '2d', column, false )
+//       }else if( Graphics.mode === '3d' ) {
+//         Graphics.use( '2d', null, false )
+//       }
 
-      if( !Graphics.noThree ) {
-        var tex = new THREE.Texture( canvas )
+      // three = $( '#three' )
+      // if( three.length ) {
+      //   three = three[0]
+      // }
+      
+      //if( column ) column.onclose = function() { Graphics.canvas = null }
+      
+      //three.style.display = 'block'
+      var container //= typeof column !== 'undefined' ? column.bodyElement[0] : $( '#mainContent' )
+      
+      if( typeof column === 'undefined' ) {
+        if( Gibber.Environment ) { // TODO: can I get rid of this? would have to be abstracted a bunch...
+          container = $( '#contentCell' )[0]
+          canvas.width = container.offsetWidth
+          canvas.height = $('table').height() - $('tfoot').height() - $('thead').height()
+        }else{
+          container = document.querySelector( 'body' )
+          canvas.width = container.offsetWidth
+          canvas.height = container.offsetHeight
+        }
       }else{
-        three.innerHTML = ''
-        three.appendChild( canvas )
+        container = column.bodyElement
+        canvas.width = container.width()
+        canvas.height = container.height()
       }
       
-      Graphics.assignWidthAndHeight()
+      canvas.style.width = canvas.width + 'px'
+      canvas.style.height = canvas.height + 'px'
       
-      // $.subscribe( '/layout/contentResize', function( e, msg ) {
-      //   three.setAttribute( 'width', msg.width )
-      //   three.setAttribute( 'height', msg.height )
-      // 
-      //   canvas.style.width = msg.width
-      //   canvas.style.height = msg.height
-      // })
+      canvas.style.position = 'relative'
+      canvas.style.left = 0
+      canvas.style.top = 0
+      
+      if( container.append ) {
+        container.append( canvas )
+      }else{
+        container.appendChild( canvas )
+      }
+
+      // if( !Graphics.noThree ) {
+      //   var tex = new THREE.Texture( canvas )
+      // }else{
+      //   three.innerHTML = ''
+      //   three.appendChild( canvas )
+      // }
+      
+      // Graphics.assignWidthAndHeight()
+      
+      if( typeof column === 'undefined' ) {
+        $.subscribe( '/layout/contentResize', function( msg ) {
+          that.width = msg.w
+          that.height = msg.h
+        
+          canvas.setAttribute( 'width', that.width )
+          canvas.setAttribute( 'height', that.height )
+      
+          canvas.style.width = that.width
+          canvas.style.height = that.height
+        })
+      }else{
+        column.onresize = function( newWidth ) {
+          that.width = newWidth
+        
+          canvas.setAttribute( 'width', that.width )
+      
+          canvas.style.width = that.width
+        }
+      }
       
       
       $.extend( that, {
@@ -72,12 +116,19 @@
             
         canvas: canvas,
         is3D: Graphics.mode === '3d',
-        texture: tex || { needsUpdate: function() {} }, 
+        texture:  { needsUpdate: function() {} },//tex || { needsUpdate: function() {} }, 
         remove : function() {
-          three.style.display = 'none'
+          //three.style.display = 'none'
+          // Graphics.canvas2D.style.display = 'none'
           //Graphics.canvas = null
           //Graphics.ctx = null 
           //cnvs = null
+        },
+        show: function() {
+          canvas.style.display = 'block'
+        },
+        hide: function() {
+          canvas.style.display = 'none'
         },
         shouldClear: false,
         _fill : that.fill,
@@ -406,23 +457,23 @@
         }
       })
       
-      if( !Graphics.noThree ) {
-        that.sprite = new Graphics.THREE.Mesh(
-          new Graphics.THREE.PlaneGeometry( canvas.width, canvas.height, 1, 1),
-          new Graphics.THREE.MeshBasicMaterial({
-            map:tex,
-            affectedByDistance:false,
-            useScreenCoordinates:true
-          })
-        )
-        
-        that.sprite.position.x = that.sprite.position.y = that.sprite.position.z = 0
-        that.texture.needsUpdate = true 
-        
-        Graphics.scene.add( that.sprite )
-      }
-      
-      Graphics.graph.push( that )
+      // if( !Graphics.noThree ) {
+      //   that.sprite = new Graphics.THREE.Mesh(
+      //     new Graphics.THREE.PlaneGeometry( canvas.width, canvas.height, 1, 1),
+      //     new Graphics.THREE.MeshBasicMaterial({
+      //       map:tex,
+      //       affectedByDistance:false,
+      //       useScreenCoordinates:true
+      //     })
+      //   )
+      //   
+      //   that.sprite.position.x = that.sprite.position.y = that.sprite.position.z = 0
+      //   that.texture.needsUpdate = true 
+      //   
+      //   Graphics.scene.add( that.sprite )
+      // }
+      // 
+      // Graphics.graph.push( that )
       
       cnvs = that
 

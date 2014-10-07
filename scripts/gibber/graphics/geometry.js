@@ -115,10 +115,13 @@ for( var key in types) {
     var type = key,
         shape = types[ key ]
     var constructor = function() {
-      if( Graphics.canvas === null){
+      if( Graphics.canvas === null || Graphics.canvas !== Graphics.canvas3D ){
         Graphics.init('3d', null, false)
       }else if( Graphics.mode === '2d' ) {
-        Graphics.use( '3d' )
+        Graphics.init('3d', null, false)
+        //Graphics.use( '3d' )
+      }else{
+        Graphics.canvas3D.style.display = 'block'
       }
       
       Graphics.running = true 
