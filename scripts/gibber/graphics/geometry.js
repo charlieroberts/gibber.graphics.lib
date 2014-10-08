@@ -115,14 +115,14 @@ for( var key in types) {
     var type = key,
         shape = types[ key ]
     var constructor = function() {
-      if( Graphics.canvas === null || Graphics.canvas !== Graphics.canvas3D ){
-        Graphics.init('3d', null, false)
-      }else if( Graphics.mode === '2d' ) {
+      if( Graphics.canvas === null ) { //|| Graphics.canvas !== Graphics.canvas3D ){
+        Graphics.init( '3d', null )
+      }/*else if( Graphics.mode === '2d' ) {
         Graphics.init('3d', null, false)
         //Graphics.use( '3d' )
       }else{
-        Graphics.canvas3D.style.display = 'block'
-      }
+        //Graphics.canvas3D.style.display = 'block'
+      }*/
       
       Graphics.running = true 
 
@@ -464,7 +464,7 @@ for( var key in types) {
         if( arguments[0].position ) this.scale = arguments[0].position
       }
                 
-      Graphics.scene.add( this.mesh )
+      Graphics.modes[ '3d' ].obj.scene.add( this.mesh )
       Graphics.graph.push( this )
       
       this.mappings = []

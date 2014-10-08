@@ -21,98 +21,121 @@ Graphics = {
   
   export: function( target ) {
     Graphics.Geometry.export( target )
-    Graphics.TwoD.export( target )
+    //Graphics.TwoD.export( target )
+    target.Canvas = Graphics.modes['2d'].constructor
     Graphics.PostProcessing.export( target )
     Graphics.GibberShaders.export( target )
     target.Video = Graphics.Video
   },
   
-  init : function( mode, container, noThree ) {
-    console.log("INIT", mode, noThree )
-    //if( this.initialized ) return 
-    // this.canvas = document.createElement('div')
-    
-    if( typeof noThree !== 'undefined' ) { 
-      this.noThree = noThree
+  getContainer: function( _container ) {
+    var container
+    if( typeof _container === 'undefined' || _container === null ) {
+      container = document.querySelector( 'body' )
     }else{
-      if( mode === '2d' ) {
-        this.noThree = true
-      }else{
-        this.noThree = false
-      }
+      container = _container.element
     }
     
-    if( !noThree ) {
-      if(!window.WebGLRenderingContext) {
-        this.noThree = true
-      }
+    return container
+  },
+  
+  init : function( mode, container ) {
+    //console.log("INIT", mode, noThree )
+    
+    // if( typeof noThree !== 'undefined' ) { 
+    //   this.noThree = noThree
+    // }else{
+    //   if( mode === '2d' ) {
+    //     this.noThree = true
+    //   }else{
+    //     this.noThree = false
+    //   }
+    // }
+    
+    // if( !noThree ) {
+    //   if(!window.WebGLRenderingContext) {
+    //     this.noThree = true
+    //   }
+    // }
+    
+    if( mode === '3d' && !window.WebGLRenderingContext ) {
+      var msg = 'Your browser does not support WebGL.' + 
+                '2D drawing will work, but 3D geometries and shaders are not supported.'
+        
+      Gibber.Environment.Message.post( msg )
     }
     
     this.mode = mode || '3d'
-    console.log("MODE", this.mode)
-    if( this.mode === '3d' && this.canvas3D !== null ) {
-      this.canvas = this.canvas3D
-    }else if( this.mode === '2d' && this.canvas2D !== null ) {
-      this.canvas = this.canvas2D
-    }else{
-      console.log( 'CREATING GRAPHICS DIV' )
-      this.canvas = document.createElement('div')
+    
+    // this.canvas.style.left = 0
+    // this.canvas.style.top = 0
+    // this.canvas.style.position = this.canvas.parent === window ? 'fixed' : 'absolute'
+    // this.canvas.style.float    = this.canvas.parent === window ? 'none' : 'left'
+    // this.canvas.style.overflow = 'hidden'
+    // this.canvas.style.display  = 'block'
+    
+    //this.canvas.setAttribute( 'id', 'three' )
+    
+    // if( this.canvas.parent === window ) { 
+    //   document.querySelector('body').appendChild( this.canvas )
+    // }else{
+    //   if( container.element.length ) {
+    //     container.element.append( this.canvas )
+    //   }else{
+    //     container.element.appendChild( this.canvas )
+    //   }
+    // }
+    
+    if( this.modes[ this.mode ].canvas === null ) {
+      this.modes[ this.mode ].obj = this.modes[ this.mode ].constructor( container )
     }
     
-    if( this.noThree !== noThree ) {
-      //Gibber.Environment.Message.post( 'Your browser does not support WebGL. 2D drawing will work, but 3D geometries and shaders are not supported.' )
+    
+    if( this.modes[ this.mode ].obj.init ) { this.modes[ this.mode ].obj.init() }
+    
+    if( this.modes[ this.mode ].canvas !== null ) {
+      this.canvas = this.modes[ this.mode ].canvas
+    }else{
+      this.canvas = this.modes[ this.mode ].canvas = this.modes[ this.mode ].obj.canvas
     }
     
     if( typeof container === 'undefined' || container === null ) {
-      this.canvas.parent = window
+      this.canvas.parent = document.querySelector( 'body' )
     }else{
       this.canvas.parent = container.element
-      container.element.find( '.editor' ).remove()
+      //container.element.find( '.editor' ).remove()
     }
-
+    
     this.assignWidthAndHeight( true )
     
-    this.canvas.style.left = 0
-    this.canvas.style.top = 0
-    this.canvas.style.position = this.canvas.parent === window ? 'fixed' : 'absolute'
-    this.canvas.style.float    = this.canvas.parent === window ? 'none' : 'left'
-    this.canvas.style.overflow = 'hidden'
-    this.canvas.style.display  = 'block'
+    this.modes[ this.mode ].obj.setSize( this.width * this.resolution, this.height * this.resolution )
     
-    this.canvas.setAttribute( 'id', 'three' )
+    //Graphics.renderer.setSize( Graphics.width * Graphics.resolution, Graphics.height * Graphics.resolution );
+    //$( Graphics.renderer.domElement ).css({ width: Graphics.width, height: Graphics.height })
     
-    if( this.canvas.parent === window ) { 
-      document.querySelector('body').appendChild( this.canvas )
-    }else{
-      if( container.element.length ) {
-        container.element.append( this.canvas )
-      }else{
-        container.element.appendChild( this.canvas )
-      }
-    }
-        
+    Graphics.sizeCanvas( this.canvas )
+    
     //console.log( this.mode )
-    if( this.mode === '2d' ) this.noThree = true
     
-    if( !this.noThree ) {
-      try{
-        console.log( 'creating scene....')
-        this.createScene( this.mode )
-      }catch(e) {
-        console.log(e)
-        this.noThree = true
-        console.log( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
-        //Gibber.Environment.Message.post( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
-      }finally{
-        if( this.noThree ) {
-          this.canvas2D = this.canvas
-        }else{
-          this.canvas3D = this.canvas
-        }
-      }
-    }else{
-      this.canvas2D = this.canvas
-    }
+    // if( !this.noThree ) {
+    //   try{
+    //     console.log( 'creating scene....')
+    //     this.createScene( this.mode )
+    //   }catch(e) {
+    //     console.log(e)
+    //     this.noThree = true
+    //     console.log( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
+    //     //Gibber.Environment.Message.post( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
+    //   }finally{
+    //     if( this.noThree ) {
+    //       this.canvas2D = this.canvas
+    //     }else{
+    //       this.canvas3D = this.canvas
+    //     }
+    //   }
+    // }else{
+    //   this.canvas2D = this.canvas
+    // }
     
     var res = this.resolution, self = this
     Object.defineProperty(this, 'resolution', {
@@ -138,71 +161,42 @@ Graphics = {
     
     this.start()
 
-    var resize = function( e, props ) { // I hate Safari on 10.6 for not having bind...
-      Graphics.width = props.w
-      Graphics.height = props.h
-      
-      Graphics.canvas.css({
-        top: props.offset,
-        width: Graphics.width,
-        height: Graphics.height,
-        zIndex: -1
-      })
-
-  		Graphics.renderer.setSize( Graphics.width * Graphics.resolution, Graphics.height * Graphics.resolution );
-      $( Graphics.renderer.domElement ).css({ width: Graphics.width, height: Graphics.height })
-    }
-    
-    $.subscribe( '/layout/contentResize', resize ) // toggle fullscreen, or toggling console bar etc.
-    
-    $.subscribe( '/layout/resizeWindow', function( e, props) {
-      props.h -= $( 'thead' ).height() 
-      props.h -= $( 'tfoot' ).height()
-      
-      resize( null, props )  
-    })
+    // var resize = function( e, props ) { // I hate Safari on 10.6 for not having bind...
+    //   Graphics.width = props.w
+    //   Graphics.height = props.h
+    //   
+    //   Graphics.canvas.css({
+    //     top: props.offset,
+    //     width: Graphics.width,
+    //     height: Graphics.height,
+    //     zIndex: -1
+    //   })
+    // 
+    //   Graphics.renderer.setSize( Graphics.width * Graphics.resolution, Graphics.height * Graphics.resolution );
+    //   $( Graphics.renderer.domElement ).css({ width: Graphics.width, height: Graphics.height })
+    // }
+    // 
+    // $.subscribe( '/layout/contentResize', resize ) // toggle fullscreen, or toggling console bar etc.
+    // 
+    // $.subscribe( '/layout/resizeWindow', function( e, props) {
+    //   props.h -= $( 'thead' ).height() 
+    //   props.h -= $( 'tfoot' ).height()
+    //   
+    //   resize( null, props )  
+    // })
     
     this.initialized = true   
   },
   
-  createScene : function( mode ) {		
-    this.renderer = new Graphics.THREE.WebGLRenderer();
-    
-    //console.log( "THREE", $('#three') )
-    var _3 = $('#three')
-    
-    if( _3.append ) {
-      _3.append( this.renderer.domElement )
-    }else{
-      _3.appendChild( this.renderer.domElement )
-    }
-    
-    this.assignWidthAndHeight()
-		this.scene = new Graphics.THREE.Scene();
-		// must wait until scene and renderer are created to initialize effect composer
-
-    this.ambientLight = new Graphics.THREE.AmbientLight(0xFFFFFF);
-
-		this.pointLight = new Graphics.THREE.PointLight( 0xFFFFFF )
-		this.pointLight.position.x = 100
-		this.pointLight.position.y = 100
-		this.pointLight.position.z = -130
-
-		this.pointLight2 = new Graphics.THREE.PointLight( 0x666666 )
-		this.pointLight2.position.x = 0
-		this.pointLight2.position.y = 0
-		this.pointLight2.position.z = 260
-
-		this.lights = [ this.pointLight, this.pointLight2 ]
-    this.use( mode ); // creates camera and adds lights	
-	
-    this.camera.updateProjectionMatrix();
-    if( this.mode === '3d' ) {
-      this.camera.position.z = 250;
-      this.camera.lookAt( this.scene.position );
-    }
+  sizeCanvas: function( canvas ) {
+    canvas.style.left = 0
+    canvas.style.top = 0
+    canvas.style.position = canvas.parent === document ? 'fixed' : 'absolute'
+    canvas.style.float    = canvas.parent === document ? 'none' : 'left'
+    canvas.style.overflow = 'hidden'
+    canvas.style.display  = 'block'
   },
-  
+    
   start : function() {
     this.running = true
 		window.requestAnimationFrame( this.render );
@@ -220,7 +214,7 @@ Graphics = {
   },
   
   use : function( mode ) {
-    var _3 = $('#three')
+    /*var _3 = $('#three')
     
     if( _3.show ) {
       $( '#three' ).show()      
@@ -274,7 +268,7 @@ Graphics = {
       this.camera.lookAt( this.scene.position )
 
       this.mode = '3d'
-    }
+    }*/
   }, 
   clear : function() {
     if( this.running ) {
@@ -304,21 +298,11 @@ Graphics = {
   render : function() {
     if( this.running ) {
   		for( var i = 0; i < this.graph.length; i++ ) {
-  			this.graph[i]._update();
-  			this.graph[i].update();
+  			this.graph[ i ]._update()
+  			this.graph[ i ].update()
   		}
       
-      if( this.noThree == false ) { // DELIBERATE DOUBLE EQUALS
-        this.renderer.clear()
-      
-        if( this.PostProcessing && this.PostProcessing.fx.length ) {
-          this.PostProcessing.composer.render()
-        }else{
-          this.renderer.render( this.scene, this.camera )
-        }
-      
-        if( this.stats ) this.stats.update()
-      }
+      this.modes[ this.mode ].obj._update()
       
       if( this.fps === null || this.fps >= 55 ) {
         window.requestAnimationFrame( this.render )
@@ -360,14 +344,14 @@ Graphics = {
     if( Graphics.canvas.parent === window ) {
       Graphics.canvas.style.top = document.querySelector( '#header' ) !== null ? document.querySelector( '#header' ).offsetHeight : 0
     }else{
-      var ch = Graphics.canvas.parent.find( '.columnHeader' ).outerHeight()
+      var ch = document.querySelector( '.columnHeader' ).offsetHeight
       Graphics.canvas.style.top = ch
       Graphics.height -= ch
       
-      Graphics.width -= Graphics.canvas.parent.find( '.resizeHandle' ).outerWidth()
+      Graphics.width -= document.querySelector( '.resizeHandle' ).offsetWidth
     }
-    Graphics.canvas.style.width = Graphics.width + 'px'
-    Graphics.canvas.style.height = Graphics.height + 'px'
+    
+    // console.log( Graphics.width, Graphics.height, Graphics.canvas.style.width, Graphics.canvas.style.height )
     Graphics.canvas.style.zIndex = - 1
     
     // this.canvas.css({
@@ -391,8 +375,20 @@ Graphics = {
 Graphics.render = Graphics.render.bind( Graphics )
 
 module.exports = function( Gibber ) { 
+  Graphics.modes = {
+    '2d':{
+      constructor: require( './2d' )( Gibber, Graphics ),
+      canvas: null,
+      obj: null,
+    },
+    '3d':{
+      constructor: require( './3d' )( Gibber, Graphics ),
+      canvas: null,
+      obj: null
+    }
+  }
+  
   Graphics.Geometry = require( './geometry' )( Gibber, Graphics, Graphics.THREE )
-  Graphics.TwoD = require( './2d' )( Gibber, Graphics )
   
   require( '../../external/three/postprocessing/EffectComposer' )
   require( '../../external/three/postprocessing/RenderPass' )
