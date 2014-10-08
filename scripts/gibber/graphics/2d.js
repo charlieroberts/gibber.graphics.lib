@@ -118,16 +118,20 @@
         is3D: Graphics.mode === '3d',
         texture:  { needsUpdate: function() {} },//tex || { needsUpdate: function() {} }, 
         remove : function() {
-          //three.style.display = 'none'
-          // Graphics.canvas2D.style.display = 'none'
-          //Graphics.canvas = null
-          //Graphics.ctx = null 
-          //cnvs = null
+          that.hide()
+          
+          if( container.remove ) {
+            canvas.remove()
+          }else{
+            container.removeChild( canvas )
+          }
+
         },
         show: function() {
           canvas.style.display = 'block'
         },
         hide: function() {
+          console.log( "CANVAS HIDE", canvas, canvas.style )
           canvas.style.display = 'none'
         },
         shouldClear: false,
@@ -184,7 +188,6 @@
           this.draw()
           this.restore()
         },
-        update : function() {},
         draw : function() {},
         clear: function() {
           this.clearRect( 0,0,this.right,this.bottom )
@@ -447,14 +450,32 @@
         width:canvas.width,
         height:canvas.height,
         sprite : null,
-        hide: function() {
-          if( Graphics.scene ) Graphics.scene.remove( that.sprite )
-          Graphics.graph.splice( that, 1 )
-        },
-        show : function() {
-          Graphics.scene.add( that.sprite )
-          Graphics.graph.push( that )
+        createSprite: function() {
+          that.texture = new Graphics.THREE.Texture( canvas ),
+                    
+          that.sprite = new Graphics.THREE.Mesh(
+            new Graphics.THREE.PlaneGeometry( canvas.width, canvas.height, 1, 1),
+            new Graphics.THREE.MeshBasicMaterial({
+              map:that.texture,
+              affectedByDistance:false,
+              useScreenCoordinates:true
+            })
+          )
+
+          that.sprite.position.x = that.sprite.position.y = that.sprite.position.z = 0
+          that.texture.needsUpdate = true 
+          
+          return that.sprite
+          //Graphics.scene.add( that.sprite )
         }
+        // hide: function() {
+        //   if( Graphics.scene ) Graphics.scene.remove( that.sprite )
+        //   Graphics.graph.splice( that, 1 )
+        // },
+        // show : function() {
+        //   Graphics.scene.add( that.sprite )
+        //   Graphics.graph.push( that )
+        // }
       })
       
       // if( !Graphics.noThree ) {
@@ -488,8 +509,14 @@
         }
       })
 
-      Graphics.canvas2d = that
-
+      //Graphics.canvas2d = that
+      
+      Graphics.graph.push( that )
+      
+      if( !Graphics.running ) {
+        Graphics.start()
+      }
+      
       return that
     }
   }

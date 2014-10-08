@@ -90,9 +90,7 @@ Graphics = {
         container.element.appendChild( this.canvas )
       }
     }
-    
-    this.render = this.render.bind( this )
-    
+        
     //console.log( this.mode )
     if( this.mode === '2d' ) this.noThree = true
     
@@ -137,6 +135,7 @@ Graphics = {
         }
       }
     });
+    
     this.start()
 
     var resize = function( e, props ) { // I hate Safari on 10.6 for not having bind...
@@ -209,6 +208,17 @@ Graphics = {
 		window.requestAnimationFrame( this.render );
   },
   
+  useCanvasAsTexture: function( _canvas ) {
+    var sprite = _canvas.createSprite()
+    //_canvas.hide()
+    
+    if( !Graphics.initialized ) {
+      Graphics.init( '3d' )
+    }
+    Graphics.use( '2d' )
+    Graphics.scene.add( sprite )
+  },
+  
   use : function( mode ) {
     var _3 = $('#three')
     
@@ -219,8 +229,9 @@ Graphics = {
     }
 
     if( mode === '2d' ) {
-      console.log("Now drawing in 2d.")
+      console.log("2D 2D 2DNow drawing in 2d.")
       if( this.mode === '3d' ) {
+        console.log("REMOVING 3D THINGIES")
         this.scene.remove( this.camera )
         this.scene.remove( this.pointLight )
         this.scene.remove( this.pointLight2 )
@@ -283,11 +294,11 @@ Graphics = {
       this.PostProcessing.isRunning = false
       
       // something in hear messes thigns up...
-      this.canvas.style.display = 'none'
+      //this.canvas.style.display = 'none'
       //this.canvas = null
       //this.ctx = null
       this.running = false
-      this.initialized = false
+      //this.initialized = false
     }
   },
   render : function() {
@@ -297,16 +308,16 @@ Graphics = {
   			this.graph[i].update();
   		}
       
-      if( !this.noThree ) {
-    		this.renderer.clear()
+      if( this.noThree == false ) { // DELIBERATE DOUBLE EQUALS
+        this.renderer.clear()
       
         if( this.PostProcessing && this.PostProcessing.fx.length ) {
           this.PostProcessing.composer.render()
         }else{
           this.renderer.render( this.scene, this.camera )
         }
-
-    		if( this.stats ) this.stats.update()
+      
+        if( this.stats ) this.stats.update()
       }
       
       if( this.fps === null || this.fps >= 55 ) {
@@ -376,6 +387,8 @@ Graphics = {
   },
   
 }
+
+Graphics.render = Graphics.render.bind( Graphics )
 
 module.exports = function( Gibber ) { 
   Graphics.Geometry = require( './geometry' )( Gibber, Graphics, Graphics.THREE )
