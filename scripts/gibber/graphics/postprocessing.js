@@ -256,13 +256,13 @@ var PP = {
   ].join('\n'),
   
   start: function() {
-    this.composer = new THREE.EffectComposer( Gibber.Graphics.renderer );
+    this.composer = new THREE.EffectComposer( Gibber.Graphics.modes['3d'].obj.renderer );
 
-    this.renderScene = new THREE.RenderPass( Gibber.Graphics.scene, Gibber.Graphics.camera );
-
+    this.renderScene = new THREE.RenderPass( Gibber.Graphics.modes['3d'].obj.scene, Gibber.Graphics.modes['3d'].obj.camera );
+    
     this.renderScene.clear = true;
     this.renderScene.renderToScreen = true;
-
+    
     this.composer.addPass( this.renderScene )
     this.isRunning = true
   },

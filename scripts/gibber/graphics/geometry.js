@@ -115,8 +115,11 @@ for( var key in types) {
     var type = key,
         shape = types[ key ]
     var constructor = function() {
-      if( Graphics.canvas === null ) { //|| Graphics.canvas !== Graphics.canvas3D ){
+      if( Graphics.modes['3d'].obj === null ) { //|| Graphics.canvas !== Graphics.canvas3D ){
         Graphics.init( '3d', null )
+      }else{
+        Graphics.modes['3d'].obj.show()
+        Graphics.mode = '3d'
       }/*else if( Graphics.mode === '2d' ) {
         Graphics.init('3d', null, false)
         //Graphics.use( '3d' )
@@ -389,7 +392,7 @@ for( var key in types) {
 			this.mods = []
       
       this.remove = this.kill = function(shouldNotRemove) {
-        Graphics.scene.remove( this.mesh )
+        Graphics.modes['3d'].obj.scene.remove( this.mesh )
         if( !shouldNotRemove )
           Graphics.graph.splice( Graphics.graph.indexOf( this ), 1 )
           

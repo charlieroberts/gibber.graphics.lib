@@ -17,12 +17,13 @@ Graphics = {
   fps: null,
   graph: [],
   initialized: false,
+  defaultContainer: 'body',
   THREE: require('../../external/three/three.min'),
   
   export: function( target ) {
     Graphics.Geometry.export( target )
-    //Graphics.TwoD.export( target )
-    target.Canvas = Graphics.modes['2d'].constructor
+    Graphics.modes['2d'].constructor.export( target )
+    //target.Canvas = Graphics.modes['2d'].constructor
     Graphics.PostProcessing.export( target )
     Graphics.GibberShaders.export( target )
     target.Video = Graphics.Video
@@ -31,7 +32,7 @@ Graphics = {
   getContainer: function( _container ) {
     var container
     if( typeof _container === 'undefined' || _container === null ) {
-      container = document.querySelector( 'body' )
+      container = document.querySelector( Graphics.defaultContainer )
     }else{
       container = _container.element
     }
@@ -39,25 +40,7 @@ Graphics = {
     return container
   },
   
-  init : function( mode, container ) {
-    //console.log("INIT", mode, noThree )
-    
-    // if( typeof noThree !== 'undefined' ) { 
-    //   this.noThree = noThree
-    // }else{
-    //   if( mode === '2d' ) {
-    //     this.noThree = true
-    //   }else{
-    //     this.noThree = false
-    //   }
-    // }
-    
-    // if( !noThree ) {
-    //   if(!window.WebGLRenderingContext) {
-    //     this.noThree = true
-    //   }
-    // }
-    
+  init : function( mode, container ) { 
     if( mode === '3d' && !window.WebGLRenderingContext ) {
       var msg = 'Your browser does not support WebGL.' + 
                 '2D drawing will work, but 3D geometries and shaders are not supported.'
@@ -66,30 +49,14 @@ Graphics = {
     }
     
     this.mode = mode || '3d'
-    
-    // this.canvas.style.left = 0
-    // this.canvas.style.top = 0
-    // this.canvas.style.position = this.canvas.parent === window ? 'fixed' : 'absolute'
-    // this.canvas.style.float    = this.canvas.parent === window ? 'none' : 'left'
-    // this.canvas.style.overflow = 'hidden'
-    // this.canvas.style.display  = 'block'
-    
-    //this.canvas.setAttribute( 'id', 'three' )
-    
-    // if( this.canvas.parent === window ) { 
-    //   document.querySelector('body').appendChild( this.canvas )
-    // }else{
-    //   if( container.element.length ) {
-    //     container.element.append( this.canvas )
-    //   }else{
-    //     container.element.appendChild( this.canvas )
-    //   }
-    // }
-    
+
     if( this.modes[ this.mode ].canvas === null ) {
+                                    //Graphics.modes['2d'].constructor()
       this.modes[ this.mode ].obj = this.modes[ this.mode ].constructor( container )
+      // if( this.mode === '2d' ) {
+      //   this.modes[ '2d' ].canvas = this.modes[ this.mode ].obj
+      // }
     }
-    
     
     if( this.modes[ this.mode ].obj.init ) { this.modes[ this.mode ].obj.init() }
     
@@ -100,20 +67,18 @@ Graphics = {
     }
     
     if( typeof container === 'undefined' || container === null ) {
-      this.canvas.parent = document.querySelector( 'body' )
+      this.canvas.parent = document.querySelector( Graphics.defaultContainer )
     }else{
       this.canvas.parent = container.element
       //container.element.find( '.editor' ).remove()
     }
     
+    this.sizeCanvas( this.canvas )
     this.assignWidthAndHeight( true )
     
     this.modes[ this.mode ].obj.setSize( this.width * this.resolution, this.height * this.resolution )
     
-    //Graphics.renderer.setSize( Graphics.width * Graphics.resolution, Graphics.height * Graphics.resolution );
-    //$( Graphics.renderer.domElement ).css({ width: Graphics.width, height: Graphics.height })
-    
-    Graphics.sizeCanvas( this.canvas )
+    //Graphics.sizeCanvas( this.canvas )
     
     //console.log( this.mode )
     
@@ -189,12 +154,21 @@ Graphics = {
   },
   
   sizeCanvas: function( canvas ) {
+    console.log( "SIZING CANVAS", canvas, canvas.parent )
+    var body = document.querySelector( 'body' ),
+        appendedToBody = canvas.parent === body
+        
     canvas.style.left = 0
-    canvas.style.top = 0
-    canvas.style.position = canvas.parent === document ? 'fixed' : 'absolute'
+    canvas.style.top = appendedToBody ? 0 : 32
+    canvas.style.position = 'fixed'
+    //canvas.style.position = canvas.parent === document ? 'fixed' : 'relative'
     canvas.style.float    = canvas.parent === document ? 'none' : 'left'
     canvas.style.overflow = 'hidden'
     canvas.style.display  = 'block'
+    
+    if( appendedToBody ) {
+      body.style.margin = 0
+    }
   },
     
   start : function() {
@@ -213,63 +187,6 @@ Graphics = {
     Graphics.scene.add( sprite )
   },
   
-  use : function( mode ) {
-    /*var _3 = $('#three')
-    
-    if( _3.show ) {
-      $( '#three' ).show()      
-    }else{
-      $( '#three' ).style.display = 'block'
-    }
-
-    if( mode === '2d' ) {
-      console.log("2D 2D 2DNow drawing in 2d.")
-      if( this.mode === '3d' ) {
-        console.log("REMOVING 3D THINGIES")
-        this.scene.remove( this.camera )
-        this.scene.remove( this.pointLight )
-        this.scene.remove( this.pointLight2 )
-        this.scene.add( this.ambientLight )
-      }
-
-      this.camera = new Graphics.THREE.OrthographicCamera( this.width / - 2, this.width / 2, this.height / 2, this.height / - 2, 1, 1.00000001 );
-      this.camera.position.z = 1
-      this.resolution = .5
-      this.renderer.setSize( this.width, this.height )
-
-      this.mode = '2d'
-    }else{
-      console.log("Now drawing in 3d.")
-      if( this.mode === '2d' ) {
-        Graphics.canvas2d.hide()
-        if( this.scene ) this.scene.remove( this.camera )
-      }
-		  var VIEW_ANGLE = 45,
-		  	  ASPECT = this.width / this.height,
-		  	  NEAR = 0.1,
-		  	  FAR = 10000;
-
-     	this.camera = new Graphics.THREE.PerspectiveCamera(
-		    VIEW_ANGLE,
-		    ASPECT,
-		    NEAR,
-		    FAR
-		  )
-      
-      if( !this.scene ) this.scene = new Graphics.THREE.Scene();
-      
-      this.scene.add( this.camera );
-      this.camera.updateProjectionMatrix();
-      this.scene.add( this.pointLight );
-      this.scene.add( this.pointLight2 );
-      this.scene.remove( this.ambientLight );
-
-      this.camera.position.z = 250;
-      this.camera.lookAt( this.scene.position )
-
-      this.mode = '3d'
-    }*/
-  }, 
   clear : function() {
     if( this.running ) {
       for( var i = 0; i < this.graph.length; i++ ) {
@@ -277,16 +194,22 @@ Graphics = {
       }
 
       this.graph.length = 0
-      if( this.PostProcessing ) this.PostProcessing.fx.length = 0
-      if( !this.noThree ) {
+      
+      console.log("GRAPHICS CLEAR", this.modes )
+      
+      for( var modeName in this.modes ) {
+        var mode = this.modes[ modeName ]
+        if( mode.obj ) mode.obj.remove()
+      }
+      
+      if( this.PostProcessing ) { 
         for( var j = this.PostProcessing.fx - 1; j >= 0; j-- ) {
           this.PostProcessing.fx[ j ].remove()
         }
+        this.PostProcessing.fx.length = 0
+        this.PostProcessing.isRunning = false
       }
-      
-      this.PostProcessing.fx.length = 0
-      this.PostProcessing.isRunning = false
-      
+
       // something in hear messes thigns up...
       //this.canvas.style.display = 'none'
       //this.canvas = null
@@ -334,21 +257,23 @@ Graphics = {
   
   assignWidthAndHeight : function( isInitialSetting ) { // don't run final lines before renderer is setup...
     Graphics.width  = Graphics.canvas.parent === window ? window.innerWidth  : (Graphics.canvas.parent.offsetWidth || Graphics.canvas.parent.width() ) //$( this.canvas.parent ).width() // either column or window... 
-    Graphics.height = Graphics.canvas.parent === window ? window.innerHeight : (Graphics.canvas.parent.offsetHeight || Graphics.canvas.parent.height() )//$( window ).height()
+    Graphics.height = Graphics.canvas.parent === window ? window.innerHeight : (Graphics.canvas.parent.offsetHeight || document.querySelector('.column').offsetHeight )//$( window ).height()
+    
+    console.log("GRAPHICS HEIGHT", Graphics.height)
     if( document.querySelector( '#header' ) !== null && Graphics.canvas.parent === window ) {
       if( Gibber.Environment.Layout.fullScreenColumn === null) { 
-        Graphics.height -= $( "#header" ).height() + $( "tfoot" ).height()
+        //Graphics.height -= $( "#header" ).height() + $( "tfoot" ).height()
       }
     }
     
     if( Graphics.canvas.parent === window ) {
       Graphics.canvas.style.top = document.querySelector( '#header' ) !== null ? document.querySelector( '#header' ).offsetHeight : 0
     }else{
-      var ch = document.querySelector( '.columnHeader' ).offsetHeight
-      Graphics.canvas.style.top = ch
-      Graphics.height -= ch
-      
-      Graphics.width -= document.querySelector( '.resizeHandle' ).offsetWidth
+      // var ch = document.querySelector( '.columnHeader' ).offsetHeight
+      // Graphics.canvas.style.top = ch
+      // Graphics.height -= ch
+      // 
+      // Graphics.width -= document.querySelector( '.resizeHandle' ).offsetWidth
     }
     
     // console.log( Graphics.width, Graphics.height, Graphics.canvas.style.width, Graphics.canvas.style.height )
@@ -387,7 +312,7 @@ module.exports = function( Gibber ) {
       obj: null
     }
   }
-  
+    
   Graphics.Geometry = require( './geometry' )( Gibber, Graphics, Graphics.THREE )
   
   require( '../../external/three/postprocessing/EffectComposer' )
