@@ -280,6 +280,8 @@ var PP = {
           //var shader = shaderProps.shaders[0].init({ center:undefined, angle:.5, scale:.035, mix:.1 })
           if( Gibber.Graphics.canvas === null){
             Gibber.Graphics.init( '3d' )
+          }else if( Gibber.Graphics.mode === '2d' ) {
+            Gibber.Graphics.useCanvasAsTexture( Gibber.Graphics.modes['2d'].obj.canvasObject )
           }
           
           Gibber.Graphics.running = true 

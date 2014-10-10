@@ -16,6 +16,7 @@ module.exports = function( Gibber, Graphics ) {
       init : function() {
         this.container = Graphics.getContainer( container )
         
+        if( this.initialized ) this.setSize( Graphics.width, Graphics.height )
         this.createRenderer()
         this.createScene()
         this.createLights()        
@@ -30,7 +31,7 @@ module.exports = function( Gibber, Graphics ) {
         
         Graphics.mode = '3d'
       },
-      
+
       setSize: function( w, h ) {
         this.renderer.setSize( w, h );
         this.renderer.domElement.style.width = w + 'px'
@@ -40,7 +41,7 @@ module.exports = function( Gibber, Graphics ) {
       },
       
       _update : function() {        
-        if( this.initialized ) {
+        if( this.initialized && this.running ) {
           this.renderer.clear()
 
           if( Graphics.PostProcessing && Graphics.PostProcessing.fx.length ) {
@@ -55,11 +56,13 @@ module.exports = function( Gibber, Graphics ) {
         if( this.renderer !== null ) return
         
         this.renderer = new Graphics.THREE.WebGLRenderer();
-    
-        if( this.container.append ) {
-          this.container.append( this.renderer.domElement )
-        }else{
-          this.container.appendChild( this.renderer.domElement )
+        
+        if( ! this.initalized ) {
+          if( this.container.append ) {
+            this.container.append( this.renderer.domElement )
+          }else{
+            this.container.appendChild( this.renderer.domElement )
+          }
         }
         
         this.canvas = this.renderer.domElement
@@ -74,6 +77,7 @@ module.exports = function( Gibber, Graphics ) {
       
       createCameras: function() {
         if( this.camera === null ) {
+          console.log("CREATING CAMERA")
     		  var VIEW_ANGLE = 45,
     		  	  ASPECT = Graphics.width / Graphics.height,
     		  	  NEAR = 0.1,
@@ -95,7 +99,7 @@ module.exports = function( Gibber, Graphics ) {
       },
       
       createLights: function() {
-        if( this.lights.length > 0 ) return 
+        if( this.lights.length > 1 ) return 
         
         this.ambientLight = new Graphics.THREE.AmbientLight(0xFFFFFF);
 
@@ -115,9 +119,22 @@ module.exports = function( Gibber, Graphics ) {
         // this.scene.remove( this.ambientLight );
       },
       
+      removeCameraAndLights: function() {
+        this.scene.remove( this.camera )
+        this.scene.remove( this.pointLight )
+        this.scene.remove( this.pointLight2 )
+        this.scene.add( this.ambientLight )
+        this.camera = null
+        this.lights.length = 0
+      },
+      
       remove : function() {
-        that.hide()
-        that.running = false
+        this.hide()
+        this.running = false
+        this.removeCameraAndLights()
+        for( var i = 0; i < this.scene.children.length; i++ ) {
+          this.scene.remove( this.scene.children[ i ] )
+        }
       },
       show: function() { that.canvas.style.display = 'block' },
       hide: function() { that.canvas.style.display = 'none'  },

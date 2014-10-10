@@ -53,7 +53,7 @@ var types = {
       
       Torus:  { radius:50, tube:10, radialSegments:8, tubularSegments:8, arc:Math.PI * 2 },
       TorusKnot: { radius: 50, tube:5, radialSegments:64, tubularSegments: 8, p:5, q:3, heightScale:1 },
-      Plane: { width:1, height:1, segmentsWidth:1, segmentsHeight:1 },
+      Plane: { width:150, height:150  , segmentsWidth:1, segmentsHeight:1 },
     },
     vectors = [ 'rotation', 'scale', 'position' ],
     processArgs = function( args, type, shape ) {
@@ -118,6 +118,8 @@ for( var key in types) {
       if( Graphics.modes['3d'].obj === null ) { //|| Graphics.canvas !== Graphics.canvas3D ){
         Graphics.init( '3d', null )
       }else{
+        console.log("INIT 3D MODE")
+        Graphics.modes['3d'].obj.init()
         Graphics.modes['3d'].obj.show()
         Graphics.mode = '3d'
       }/*else if( Graphics.mode === '2d' ) {

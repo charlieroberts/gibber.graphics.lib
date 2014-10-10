@@ -28,6 +28,14 @@ module.exports = function( Gibber, Graphics ) {
         this.canvasObject.remove()
       }
     },
+    removeCameraAndLights: function() {
+      this.scene.remove( this.camera )
+      this.scene.remove( this.pointLight )
+      this.scene.remove( this.pointLight2 )
+      this.scene.add( this.ambientLight )
+      this.camera = null
+      this.lights.length = 0
+    },
     init: function( container ) {
       this.container = Graphics.getContainer( container )
       this.initialized = true
@@ -49,6 +57,17 @@ module.exports = function( Gibber, Graphics ) {
     },
     setSize: function( w, h ) {
       this.canvasObject.setSize( w,h )
+    },
+    setupCameraAndLights: function() {
+      var _3d = Graphics.modes['3d'].obj
+      if( Graphics.mode === '3d' ) {
+        _3d.removeCameraAndLights()
+      }
+
+      _3d.camera = new THREE.OrthographicCamera( Graphics.width / - 2, Graphics.width / 2, Graphics.height / 2, Graphics.height / - 2, 1, 1.00000001 );
+      _3d.camera.position.z = 1
+      _3d.resolution = .5
+      _3d.renderer.setSize( Graphics.width, Graphics.height )
     },
     Canvas : function( container ) {
       //if( !this.initialized ) this.init( container )
@@ -95,6 +114,10 @@ module.exports = function( Gibber, Graphics ) {
           //Graphics.sizeCanvas( this.canvas )
                     
         },
+        removeCameraAndLights: function() {
+          
+        },
+
         canvas: canvas,
         is3D: Graphics.mode === '3d',
         texture:  { needsUpdate: function() {} },//tex || { needsUpdate: function() {} }, 

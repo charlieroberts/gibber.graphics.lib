@@ -77,31 +77,7 @@ Graphics = {
     this.assignWidthAndHeight( true )
     
     this.modes[ this.mode ].obj.setSize( this.width * this.resolution, this.height * this.resolution )
-    
-    //Graphics.sizeCanvas( this.canvas )
-    
-    //console.log( this.mode )
-    
-    // if( !this.noThree ) {
-    //   try{
-    //     console.log( 'creating scene....')
-    //     this.createScene( this.mode )
-    //   }catch(e) {
-    //     console.log(e)
-    //     this.noThree = true
-    //     console.log( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
-    //     //Gibber.Environment.Message.post( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
-    //   }finally{
-    //     if( this.noThree ) {
-    //       this.canvas2D = this.canvas
-    //     }else{
-    //       this.canvas3D = this.canvas
-    //     }
-    //   }
-    // }else{
-    //   this.canvas2D = this.canvas
-    // }
-    
+
     var res = this.resolution, self = this
     Object.defineProperty(this, 'resolution', {
       get: function() { return res; },
@@ -126,35 +102,27 @@ Graphics = {
     
     this.start()
 
-    // var resize = function( e, props ) { // I hate Safari on 10.6 for not having bind...
-    //   Graphics.width = props.w
-    //   Graphics.height = props.h
-    //   
-    //   Graphics.canvas.css({
-    //     top: props.offset,
-    //     width: Graphics.width,
-    //     height: Graphics.height,
-    //     zIndex: -1
-    //   })
+    var resize = function( props ) { // I hate Safari on 10.6 for not having bind...
+      Graphics.width = props.w
+      Graphics.height = props.h
+      
+      if( Graphics.modes['2d'].obj ) Graphics.modes['2d'].obj.setSize( props.w, props.h )
+      if( Graphics.modes['3d'].obj ) Graphics.modes['3d'].obj.setSize( props.w, props.h )      
+    }
+    
+    $.subscribe( '/layout/contentResize', resize ) // toggle fullscreen, or toggling console bar etc.
     // 
-    //   Graphics.renderer.setSize( Graphics.width * Graphics.resolution, Graphics.height * Graphics.resolution );
-    //   $( Graphics.renderer.domElement ).css({ width: Graphics.width, height: Graphics.height })
-    // }
-    // 
-    // $.subscribe( '/layout/contentResize', resize ) // toggle fullscreen, or toggling console bar etc.
-    // 
-    // $.subscribe( '/layout/resizeWindow', function( e, props) {
-    //   props.h -= $( 'thead' ).height() 
-    //   props.h -= $( 'tfoot' ).height()
-    //   
-    //   resize( null, props )  
-    // })
+    $.subscribe( '/layout/resizeWindow', function( props ) {
+      props.h -= $( 'thead' ).height() 
+      props.h -= $( 'tfoot' ).height()
+      
+      resize( props )  
+    })
     
     this.initialized = true   
   },
   
   sizeCanvas: function( canvas ) {
-    console.log( "SIZING CANVAS", canvas, canvas.parent )
     var body = document.querySelector( 'body' ),
         appendedToBody = canvas.parent === body
         
@@ -170,7 +138,7 @@ Graphics = {
       body.style.margin = 0
     }
   },
-    
+
   start : function() {
     this.running = true
 		window.requestAnimationFrame( this.render );
@@ -180,11 +148,15 @@ Graphics = {
     var sprite = _canvas.createSprite()
     //_canvas.hide()
     
-    if( !Graphics.initialized ) {
+    if( !Graphics.initialized || Graphics.mode === '2d' ) {
       Graphics.init( '3d' )
     }
-    Graphics.use( '2d' )
-    Graphics.scene.add( sprite )
+    //Graphics.use( '2d' )
+    Graphics.modes['3d'].obj.scene.add( sprite )
+    
+    Graphics.modes['2d'].obj.setupCameraAndLights()
+    
+    Graphics.graph.push( _canvas )
   },
   
   clear : function() {
@@ -194,9 +166,7 @@ Graphics = {
       }
 
       this.graph.length = 0
-      
-      console.log("GRAPHICS CLEAR", this.modes )
-      
+            
       for( var modeName in this.modes ) {
         var mode = this.modes[ modeName ]
         if( mode.obj ) mode.obj.remove()
@@ -209,7 +179,14 @@ Graphics = {
         this.PostProcessing.fx.length = 0
         this.PostProcessing.isRunning = false
       }
-
+      
+      if( this.mode === '3d' ) {
+        for( var i = 0; i < this.modes['3d'].obj.scene.children.length; i++ ) {
+          var child = this.modes['3d'].obj.scene.children[ i ]
+          this.modes['3d'].obj.scene.remove( child )
+        }
+      }
+      
       // something in hear messes thigns up...
       //this.canvas.style.display = 'none'
       //this.canvas = null
@@ -259,32 +236,15 @@ Graphics = {
     Graphics.width  = Graphics.canvas.parent === window ? window.innerWidth  : (Graphics.canvas.parent.offsetWidth || Graphics.canvas.parent.width() ) //$( this.canvas.parent ).width() // either column or window... 
     Graphics.height = Graphics.canvas.parent === window ? window.innerHeight : (Graphics.canvas.parent.offsetHeight || document.querySelector('.column').offsetHeight )//$( window ).height()
     
-    console.log("GRAPHICS HEIGHT", Graphics.height)
     if( document.querySelector( '#header' ) !== null && Graphics.canvas.parent === window ) {
       if( Gibber.Environment.Layout.fullScreenColumn === null) { 
         //Graphics.height -= $( "#header" ).height() + $( "tfoot" ).height()
       }
     }
     
-    if( Graphics.canvas.parent === window ) {
-      Graphics.canvas.style.top = document.querySelector( '#header' ) !== null ? document.querySelector( '#header' ).offsetHeight : 0
-    }else{
-      // var ch = document.querySelector( '.columnHeader' ).offsetHeight
-      // Graphics.canvas.style.top = ch
-      // Graphics.height -= ch
-      // 
-      // Graphics.width -= document.querySelector( '.resizeHandle' ).offsetWidth
-    }
-    
     // console.log( Graphics.width, Graphics.height, Graphics.canvas.style.width, Graphics.canvas.style.height )
     Graphics.canvas.style.zIndex = - 1
-    
-    // this.canvas.css({
-//       top: $( '#header' ).height(),
-//       width: this.width,
-//       height: this.height,
-//       zIndex: -1
-//     })
+
     
     if( !isInitialSetting && Graphics.mode !== '2d' ) {
   		Graphics.renderer.setSize( Graphics.width * Graphics.resolution, Graphics.height * Graphics.resolution );
