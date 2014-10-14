@@ -22,6 +22,13 @@ a.stop()
 module.exports = function( Gibber, Graphics ) {
   'use strict';
   
+  navigator.getUserMedia = ( navigator.getUserMedia       ||
+                             navigator.webkitGetUserMedia ||
+                             navigator.mozGetUserMedia    ||
+                             navigator.msGetUserMedia )
+                             
+  URL = URL || webkitURL
+  
   var _videoElement, 
       _videoTexture = null, 
       video, 
@@ -37,11 +44,11 @@ module.exports = function( Gibber, Graphics ) {
     }
     
     if( _videoTexture === null ) {
-      navigator.webkitGetUserMedia(
+      navigator.getUserMedia(
         { video:true, audio:false }, 
         function(stream){ 
           video.stream = stream;
-          video.src = webkitURL.createObjectURL( stream ); 
+          video.src = URL.createObjectURL( stream ); 
         }, 
         function( error ){ console.log( 'Failed to get a stream due to', error ); }
       ); 
