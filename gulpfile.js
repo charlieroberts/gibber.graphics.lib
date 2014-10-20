@@ -6,10 +6,15 @@ var browserify = require( 'gulp-browserify' ),
     insert = require( 'gulp-insert' );
 
 gulp.task( 'client', function(){
-  var out = gulp.src( './scripts/gibber/gibber.js')
-    .pipe( browserify({ standalone:'Gibber', bare:true, ignore:'./audio' }) ) // MUST IGNORE AUDIO WHICH IS REQUIRED IN GIBBER.JS!!!
+    var out = gulp.src( [ './scripts/gibber/gibber.js' ] )
+    .pipe( browserify({ 
+      standalone:'Gibber', 
+      bare:true, 
+      ignore:['./audio' ], 
+      noParse:[ require.resolve( './scripts/external/three/three.min.js' ) ] 
+    }) )
     .pipe( rename('gibber.graphics.lib.js') )
-    .pipe( gulp.dest('./build/') )
+    .pipe( gulp.dest( './build/' ) )
     .pipe( buffer() )
     .pipe( uglify() )
     .pipe( rename('gibber.graphics.lib.min.js') )
@@ -18,4 +23,4 @@ gulp.task( 'client', function(){
     return out
 });
 
-gulp.task( 'default', ['client'] )
+gulp.task( 'default', [ 'client' ] )

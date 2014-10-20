@@ -384,7 +384,7 @@ var Gibber = {
     //   }
     // }
     
-    if( !obj.seq ) {
+    if( !obj.seq && Gibber.Audio ) {
       obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale, priority:priority })
     }
     
@@ -601,7 +601,7 @@ var Gibber = {
     
     obj.gibber = true // keyword identifying gibber object, needed for notation parser
     
-    if( !obj.seq && shouldSeq ) {
+    if( !obj.seq && shouldSeq && Gibber.Audio) {
       obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale })      
     }
     

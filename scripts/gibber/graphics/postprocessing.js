@@ -293,9 +293,6 @@ var PP = {
 					  shader = shaderProps.init( arguments[0], arguments[1] )
           }
           
-          // TODO: replace with Graphics.seq or Audio.seq
-          shader.seq = {}
-          
           Gibber.createProxyProperties( shader, {  } ) // call with empty object to initialize
           
 					shader.uniform = function(_name, _value, _min, _max, type ) {

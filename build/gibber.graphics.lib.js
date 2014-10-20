@@ -3976,7 +3976,7 @@ var Gibber = {
     //   }
     // }
     
-    if( !obj.seq ) {
+    if( !obj.seq && Gibber.Audio ) {
       obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale, priority:priority })
     }
     
@@ -4193,7 +4193,7 @@ var Gibber = {
     
     obj.gibber = true // keyword identifying gibber object, needed for notation parser
     
-    if( !obj.seq && shouldSeq ) {
+    if( !obj.seq && shouldSeq && Gibber.Audio) {
       obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale })      
     }
     
@@ -4247,6 +4247,14 @@ module.exports = function( Gibber, Graphics ) {
         this.canvasObject.remove()
       }
     },
+    removeCameraAndLights: function() {
+      this.scene.remove( this.camera )
+      this.scene.remove( this.pointLight )
+      this.scene.remove( this.pointLight2 )
+      this.scene.add( this.ambientLight )
+      this.camera = null
+      this.lights.length = 0
+    },
     init: function( container ) {
       this.container = Graphics.getContainer( container )
       this.initialized = true
@@ -4268,6 +4276,17 @@ module.exports = function( Gibber, Graphics ) {
     },
     setSize: function( w, h ) {
       this.canvasObject.setSize( w,h )
+    },
+    setupCameraAndLights: function() {
+      var _3d = Graphics.modes['3d'].obj
+      if( Graphics.mode === '3d' ) {
+        _3d.removeCameraAndLights()
+      }
+
+      _3d.camera = new THREE.OrthographicCamera( Graphics.width / - 2, Graphics.width / 2, Graphics.height / 2, Graphics.height / - 2, 1, 1.00000001 );
+      _3d.camera.position.z = 1
+      _3d.resolution = .5
+      _3d.renderer.setSize( Graphics.width, Graphics.height )
     },
     Canvas : function( container ) {
       //if( !this.initialized ) this.init( container )
@@ -4314,6 +4333,10 @@ module.exports = function( Gibber, Graphics ) {
           //Graphics.sizeCanvas( this.canvas )
                     
         },
+        removeCameraAndLights: function() {
+          
+        },
+
         canvas: canvas,
         is3D: Graphics.mode === '3d',
         texture:  { needsUpdate: function() {} },//tex || { needsUpdate: function() {} }, 
@@ -4727,6 +4750,7 @@ module.exports = function( Gibber, Graphics ) {
       init : function() {
         this.container = Graphics.getContainer( container )
         
+        if( this.initialized ) this.setSize( Graphics.width, Graphics.height )
         this.createRenderer()
         this.createScene()
         this.createLights()        
@@ -4741,7 +4765,7 @@ module.exports = function( Gibber, Graphics ) {
         
         Graphics.mode = '3d'
       },
-      
+
       setSize: function( w, h ) {
         this.renderer.setSize( w, h );
         this.renderer.domElement.style.width = w + 'px'
@@ -4751,7 +4775,7 @@ module.exports = function( Gibber, Graphics ) {
       },
       
       _update : function() {        
-        if( this.initialized ) {
+        if( this.initialized && this.running ) {
           this.renderer.clear()
 
           if( Graphics.PostProcessing && Graphics.PostProcessing.fx.length ) {
@@ -4766,11 +4790,13 @@ module.exports = function( Gibber, Graphics ) {
         if( this.renderer !== null ) return
         
         this.renderer = new Graphics.THREE.WebGLRenderer();
-    
-        if( this.container.append ) {
-          this.container.append( this.renderer.domElement )
-        }else{
-          this.container.appendChild( this.renderer.domElement )
+        
+        if( ! this.initalized ) {
+          if( this.container.append ) {
+            this.container.append( this.renderer.domElement )
+          }else{
+            this.container.appendChild( this.renderer.domElement )
+          }
         }
         
         this.canvas = this.renderer.domElement
@@ -4785,6 +4811,7 @@ module.exports = function( Gibber, Graphics ) {
       
       createCameras: function() {
         if( this.camera === null ) {
+          console.log("CREATING CAMERA")
     		  var VIEW_ANGLE = 45,
     		  	  ASPECT = Graphics.width / Graphics.height,
     		  	  NEAR = 0.1,
@@ -4806,7 +4833,7 @@ module.exports = function( Gibber, Graphics ) {
       },
       
       createLights: function() {
-        if( this.lights.length > 0 ) return 
+        if( this.lights.length > 1 ) return 
         
         this.ambientLight = new Graphics.THREE.AmbientLight(0xFFFFFF);
 
@@ -4826,9 +4853,22 @@ module.exports = function( Gibber, Graphics ) {
         // this.scene.remove( this.ambientLight );
       },
       
+      removeCameraAndLights: function() {
+        this.scene.remove( this.camera )
+        this.scene.remove( this.pointLight )
+        this.scene.remove( this.pointLight2 )
+        this.scene.add( this.ambientLight )
+        this.camera = null
+        this.lights.length = 0
+      },
+      
       remove : function() {
-        that.hide()
-        that.running = false
+        this.hide()
+        this.running = false
+        this.removeCameraAndLights()
+        for( var i = 0; i < this.scene.children.length; i++ ) {
+          this.scene.remove( this.scene.children[ i ] )
+        }
       },
       show: function() { that.canvas.style.display = 'block' },
       hide: function() { that.canvas.style.display = 'none'  },
@@ -4895,7 +4935,7 @@ var types = {
       
       Torus:  { radius:50, tube:10, radialSegments:8, tubularSegments:8, arc:Math.PI * 2 },
       TorusKnot: { radius: 50, tube:5, radialSegments:64, tubularSegments: 8, p:5, q:3, heightScale:1 },
-      Plane: { width:1, height:1, segmentsWidth:1, segmentsHeight:1 },
+      Plane: { width:150, height:150  , segmentsWidth:1, segmentsHeight:1 },
     },
     vectors = [ 'rotation', 'scale', 'position' ],
     processArgs = function( args, type, shape ) {
@@ -4960,6 +5000,8 @@ for( var key in types) {
       if( Graphics.modes['3d'].obj === null ) { //|| Graphics.canvas !== Graphics.canvas3D ){
         Graphics.init( '3d', null )
       }else{
+        console.log("INIT 3D MODE")
+        Graphics.modes['3d'].obj.init()
         Graphics.modes['3d'].obj.show()
         Graphics.mode = '3d'
       }/*else if( Graphics.mode === '2d' ) {
@@ -4998,8 +5040,6 @@ for( var key in types) {
       this.mesh = new THREE.Mesh( this.geometry, this.material )
 
       this.spinX = this.spinY = this.spinZ = 0
-      
-      this.seq = {}//Gibber.Seq()
     
       this.mappingProperties = mappingProperties
       this.mappingObjects = []
@@ -5669,31 +5709,7 @@ Graphics = {
     this.assignWidthAndHeight( true )
     
     this.modes[ this.mode ].obj.setSize( this.width * this.resolution, this.height * this.resolution )
-    
-    //Graphics.sizeCanvas( this.canvas )
-    
-    //console.log( this.mode )
-    
-    // if( !this.noThree ) {
-    //   try{
-    //     console.log( 'creating scene....')
-    //     this.createScene( this.mode )
-    //   }catch(e) {
-    //     console.log(e)
-    //     this.noThree = true
-    //     console.log( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
-    //     //Gibber.Environment.Message.post( 'Your browser supports WebGL but does not have it enabled. 2D drawing will work, but 3D geometries and shaders will not function until you turn it on.' )
-    //   }finally{
-    //     if( this.noThree ) {
-    //       this.canvas2D = this.canvas
-    //     }else{
-    //       this.canvas3D = this.canvas
-    //     }
-    //   }
-    // }else{
-    //   this.canvas2D = this.canvas
-    // }
-    
+
     var res = this.resolution, self = this
     Object.defineProperty(this, 'resolution', {
       get: function() { return res; },
@@ -5718,35 +5734,27 @@ Graphics = {
     
     this.start()
 
-    // var resize = function( e, props ) { // I hate Safari on 10.6 for not having bind...
-    //   Graphics.width = props.w
-    //   Graphics.height = props.h
-    //   
-    //   Graphics.canvas.css({
-    //     top: props.offset,
-    //     width: Graphics.width,
-    //     height: Graphics.height,
-    //     zIndex: -1
-    //   })
+    var resize = function( props ) { // I hate Safari on 10.6 for not having bind...
+      Graphics.width = props.w
+      Graphics.height = props.h
+      
+      if( Graphics.modes['2d'].obj ) Graphics.modes['2d'].obj.setSize( props.w, props.h )
+      if( Graphics.modes['3d'].obj ) Graphics.modes['3d'].obj.setSize( props.w, props.h )      
+    }
+    
+    $.subscribe( '/layout/contentResize', resize ) // toggle fullscreen, or toggling console bar etc.
     // 
-    //   Graphics.renderer.setSize( Graphics.width * Graphics.resolution, Graphics.height * Graphics.resolution );
-    //   $( Graphics.renderer.domElement ).css({ width: Graphics.width, height: Graphics.height })
-    // }
-    // 
-    // $.subscribe( '/layout/contentResize', resize ) // toggle fullscreen, or toggling console bar etc.
-    // 
-    // $.subscribe( '/layout/resizeWindow', function( e, props) {
-    //   props.h -= $( 'thead' ).height() 
-    //   props.h -= $( 'tfoot' ).height()
-    //   
-    //   resize( null, props )  
-    // })
+    $.subscribe( '/layout/resizeWindow', function( props ) {
+      props.h -= $( 'thead' ).height() 
+      props.h -= $( 'tfoot' ).height()
+      
+      resize( props )  
+    })
     
     this.initialized = true   
   },
   
   sizeCanvas: function( canvas ) {
-    console.log( "SIZING CANVAS", canvas, canvas.parent )
     var body = document.querySelector( 'body' ),
         appendedToBody = canvas.parent === body
         
@@ -5762,7 +5770,7 @@ Graphics = {
       body.style.margin = 0
     }
   },
-    
+
   start : function() {
     this.running = true
 		window.requestAnimationFrame( this.render );
@@ -5772,11 +5780,15 @@ Graphics = {
     var sprite = _canvas.createSprite()
     //_canvas.hide()
     
-    if( !Graphics.initialized ) {
+    if( !Graphics.initialized || Graphics.mode === '2d' ) {
       Graphics.init( '3d' )
     }
-    Graphics.use( '2d' )
-    Graphics.scene.add( sprite )
+    //Graphics.use( '2d' )
+    Graphics.modes['3d'].obj.scene.add( sprite )
+    
+    Graphics.modes['2d'].obj.setupCameraAndLights()
+    
+    Graphics.graph.push( _canvas )
   },
   
   clear : function() {
@@ -5786,9 +5798,7 @@ Graphics = {
       }
 
       this.graph.length = 0
-      
-      console.log("GRAPHICS CLEAR", this.modes )
-      
+            
       for( var modeName in this.modes ) {
         var mode = this.modes[ modeName ]
         if( mode.obj ) mode.obj.remove()
@@ -5801,7 +5811,14 @@ Graphics = {
         this.PostProcessing.fx.length = 0
         this.PostProcessing.isRunning = false
       }
-
+      
+      if( this.mode === '3d' ) {
+        for( var i = 0; i < this.modes['3d'].obj.scene.children.length; i++ ) {
+          var child = this.modes['3d'].obj.scene.children[ i ]
+          this.modes['3d'].obj.scene.remove( child )
+        }
+      }
+      
       // something in hear messes thigns up...
       //this.canvas.style.display = 'none'
       //this.canvas = null
@@ -5851,37 +5868,20 @@ Graphics = {
     Graphics.width  = Graphics.canvas.parent === window ? window.innerWidth  : (Graphics.canvas.parent.offsetWidth || Graphics.canvas.parent.width() ) //$( this.canvas.parent ).width() // either column or window... 
     Graphics.height = Graphics.canvas.parent === window ? window.innerHeight : (Graphics.canvas.parent.offsetHeight || document.querySelector('.column').offsetHeight )//$( window ).height()
     
-    console.log("GRAPHICS HEIGHT", Graphics.height)
     if( document.querySelector( '#header' ) !== null && Graphics.canvas.parent === window ) {
       if( Gibber.Environment.Layout.fullScreenColumn === null) { 
         //Graphics.height -= $( "#header" ).height() + $( "tfoot" ).height()
       }
     }
     
-    if( Graphics.canvas.parent === window ) {
-      Graphics.canvas.style.top = document.querySelector( '#header' ) !== null ? document.querySelector( '#header' ).offsetHeight : 0
-    }else{
-      // var ch = document.querySelector( '.columnHeader' ).offsetHeight
-      // Graphics.canvas.style.top = ch
-      // Graphics.height -= ch
-      // 
-      // Graphics.width -= document.querySelector( '.resizeHandle' ).offsetWidth
-    }
-    
     // console.log( Graphics.width, Graphics.height, Graphics.canvas.style.width, Graphics.canvas.style.height )
     Graphics.canvas.style.zIndex = - 1
-    
-    // this.canvas.css({
-//       top: $( '#header' ).height(),
-//       width: this.width,
-//       height: this.height,
-//       zIndex: -1
-//     })
+
     
     if( !isInitialSetting && Graphics.mode !== '2d' ) {
-  		Graphics.renderer.setSize( Graphics.width * Graphics.resolution, Graphics.height * Graphics.resolution );
-      Graphics.renderer.domElement.style.width = Graphics.width + 'px'
-      Graphics.renderer.domElement.style.height = Graphics.height + 'px'      
+  		Graphics.modes['3d'].obj.renderer.setSize( Graphics.width * Graphics.resolution, Graphics.height * Graphics.resolution );
+      Graphics.modes['3d'].obj.renderer.domElement.style.width = Graphics.width + 'px'
+      Graphics.modes['3d'].obj.renderer.domElement.style.height = Graphics.height + 'px'      
       
       //$( this.renderer.domElement ).css({ width: this.width, height: this.height })
     }
@@ -6217,6 +6217,8 @@ var PP = {
           //var shader = shaderProps.shaders[0].init({ center:undefined, angle:.5, scale:.035, mix:.1 })
           if( Gibber.Graphics.canvas === null){
             Gibber.Graphics.init( '3d' )
+          }else if( Gibber.Graphics.mode === '2d' ) {
+            Gibber.Graphics.useCanvasAsTexture( Gibber.Graphics.modes['2d'].obj.canvasObject )
           }
           
           Gibber.Graphics.running = true 
@@ -6227,9 +6229,6 @@ var PP = {
 					}else{
 					  shader = shaderProps.init( arguments[0], arguments[1] )
           }
-          
-          // TODO: replace with Graphics.seq or Audio.seq
-          shader.seq = {}
           
           Gibber.createProxyProperties( shader, {  } ) // call with empty object to initialize
           
@@ -6814,6 +6813,13 @@ a.stop()
 module.exports = function( Gibber, Graphics ) {
   'use strict';
   
+  navigator.getUserMedia = ( navigator.getUserMedia       ||
+                             navigator.webkitGetUserMedia ||
+                             navigator.mozGetUserMedia    ||
+                             navigator.msGetUserMedia )
+                             
+  URL = URL || webkitURL
+  
   var _videoElement, 
       _videoTexture = null, 
       video, 
@@ -6829,11 +6835,11 @@ module.exports = function( Gibber, Graphics ) {
     }
     
     if( _videoTexture === null ) {
-      navigator.webkitGetUserMedia(
+      navigator.getUserMedia(
         { video:true, audio:false }, 
         function(stream){ 
           video.stream = stream;
-          video.src = webkitURL.createObjectURL( stream ); 
+          video.src = URL.createObjectURL( stream ); 
         }, 
         function( error ){ console.log( 'Failed to get a stream due to', error ); }
       ); 
