@@ -22,6 +22,10 @@ var Gibber = {
     if( Gibber.Graphics ) {
       Gibber.Graphics.export( target )
     }
+    
+    if( Gibber.Interface ) {
+      Gibber.Interface.export( target )
+    }
   },
   
   init: function( _options ) {                        
@@ -48,12 +52,15 @@ var Gibber = {
           options.target.Master = Gibber.Audio.Master    
         }else{
           $.extend( Gibber, Gibber.Audio )
-        }
+        }        
       }
       
       if( Gibber.Graphics ) {
-        Gibber.Graphics.init( options.graphicsMode )
+        // this happens dynamically when a graphics object is first created to save CPU
+        // Gibber.Graphics.init( options.graphicsMode ) 
       }
+      
+      if( Gibber.Interface ) {}
       
       if( options.globalize ) {
         Gibber.export( options.target )
@@ -84,14 +91,17 @@ var Gibber = {
         Gibber.Environment.SERVER_URL + '/gibber/'+path, {},
         function( d ) {
           d = JSON.parse( d )
-          eval( d.text )
+                    
+          var f = new Function( "return " + d.text )
+          
+          Gibber.Modules[ path ] = f()
           
           if( exportTo && Gibber.Modules[ path ] ) {
             $.extend( exportTo, Gibber.Modules[ path ] )
-            Gibber.Modules[ path ] = exportTo
-          }  
+            //Gibber.Modules[ path ] = exportTo
+          }
           if( Gibber.Modules[ path ] ) {
-            if( Gibber.Modules[ path ].init ) {
+            if( typeof Gibber.Modules[ path ].init === 'function' ) {
               Gibber.Modules[ path ].init()
             }
             console.log( 'Module ' + path + ' is now loaded.' )
@@ -293,13 +303,13 @@ var Gibber = {
     F.prototype = constructor.prototype;
     return new F();
   },
-  
+
   createMappingObject : function(target, from) {
     var min = typeof target.min === 'function' ? target.min() : target.min,
         max = typeof target.max === 'function' ? target.max() : target.max,
         _min = typeof from.min === 'function' ? from.min() : from.min,
         _max = typeof from.max === 'function' ? from.max() : from.max
-        
+    
     if( typeof from.object === 'undefined' && from.Value) { // if using an interface object directly to map
       from = from.Value
     }
@@ -319,7 +329,7 @@ var Gibber = {
     
     mapping = Gibber.mappings[ target.timescale ][ fromTimescale ]( target, from )
     
-    target.object[ target.name ].toString = function() { return '> continuous mapping: ' + from.name + ' -> ' + target.name }
+    //target.object[ target.name ].toString = function() { return '> continuous mapping: ' + from.name + ' -> ' + target.name }
     
     Object.defineProperties( target.object[ target.Name ], {
       'min' : {
@@ -369,7 +379,13 @@ var Gibber = {
     
     target.object.mappings.push( mapping )
     
+    if( typeof from.object.mappings === 'undefined' ) from.object.mappings = []
+    
+    from.object.mappings.push( mapping )
+    
     Gibber.defineSequencedProperty( target.object[ target.Name ], 'invert' )
+    
+    return mapping
   },
   
   defineSequencedProperty : function( obj, key, priority ) {
@@ -385,13 +401,13 @@ var Gibber = {
     // }
     
     if( !obj.seq && Gibber.Audio ) {
-      obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale, priority:priority })
+      obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale, priority:priority, target:obj })
     }
     
     fnc.seq = function( v,d ) {  
 
       var args = {
-            key: key,
+            'key': key,
             values: $.isArray(v) || v !== null && typeof v !== 'function' && typeof v.length === 'number' ? v : [v],
             durations: $.isArray(d) ? d : typeof d !== 'undefined' ? [d] : null,
             target: obj,
@@ -497,11 +513,126 @@ var Gibber = {
     for( var i = 0; i < methods.length; i++ ) Gibber.defineSequencedProperty( obj, methods[ i ] ) 
   },
   
+  /*
+
+  seq: function( v, d ) {
+    if( !obj.seq ) obj.seq = Seq({ doNotStart:true, scale:obj.scale })
+  
+    var args = {
+      key: propertyName,
+      values: $.isArray(v) || v !== null && typeof v !== 'function' && typeof v.length === 'number' ? v : [v],
+      durations: $.isArray(d) ? d : typeof d !== 'undefined' ? [d] : null,
+      target: obj
+    }
+  
+    obj.seq.add( args )
+    obj.seq.start()
+  },
+  
+  */
+  
+  defineProperty : function( obj, propertyName, shouldSeq, shouldRamp, mappingsDictionary, shouldUseMappings, priority, useOldGetter ) {
+    var originalValue = typeof obj[ propertyName ] === 'object' ? obj[ propertyName ].valueOf() : obj[ propertyName ],
+        Name = propertyName.charAt( 0 ).toUpperCase() + propertyName.slice( 1 ),
+        property = function( v ) {
+          var returnValue = property
+          
+          if( v ) { 
+            obj[ propertyName ] = v
+            returnValue = obj
+          }
+          
+          return returnValue
+        }
+
+    // TODO: get rid of this line
+    mappingsDictionary = shouldUseMappings ? mappingsDictionary || obj.mappingProperties[ propertyName ] : null
+    
+    $.extend( property, mappingsDictionary )
+    
+    $.extend( property, {
+      'propertyName': propertyName, // can't redfine 'name' on a function, unless we eval or something...
+      'Name':   Name,  
+      value:    originalValue,
+      type:     'property',
+      object:   obj,
+      targets:  [],
+      valueOf:  function() { return property.value },
+      toString: function() { return property.value.toString() },
+      oldSetter: obj.__lookupSetter__( propertyName ),
+      oldGetter: obj.__lookupGetter__( propertyName ),      
+      oldMappingObjectGetter: obj.__lookupGetter__( Name ),
+      oldMappingObjectSetter: obj.__lookupSetter__( Name )
+    })
+    
+    Object.defineProperty( obj, propertyName, {
+      configurable:true,
+      get: function(){ 
+        // var returnValue = property
+        // if( useOldGetter ) {
+        //   console.log( property.oldGetter )
+        //   returnValue = property.oldGetter()
+        // }
+        // else if( property.oldMappingObjectGetter ) {
+        //   return property.oldMappingObjectGetter()
+        // }
+        // return returnValue || property
+        return property
+      },
+      set: function( v ){
+        if( (typeof v === 'function' || typeof v === 'object' && v.type === 'mapping') && ( v.type === 'property' || v.type === 'mapping' ) ) {
+          Gibber.createMappingObject( property, v )
+        }else{
+          if( shouldUseMappings && obj[ property.Name ] ) {
+            if( typeof obj[ property.Name ].mapping !== 'undefined' ) { 
+              if( obj[ property.Name ].mapping.remove ) obj[ property.Name ].mapping.remove( true )
+            }
+          }
+          
+          var newValue = v
+        
+          if( property.oldSetter ) {
+            var setterResult = property.oldSetter.call( obj, v )
+            if( typeof setterResult !== 'undefined' ) { newValue = setterResult }
+          }
+          
+          property.value = newValue
+        }
+        
+        return obj
+      }
+    })
+    
+    if( shouldSeq  ) Gibber.defineSequencedProperty( obj, propertyName, priority )
+    if( shouldRamp ) Gibber.defineRampedProperty( obj, propertyName )
+    
+    // capital letter mapping sugar
+    if( shouldUseMappings ) {
+      Object.defineProperty( obj, property.Name, {
+        configurable: true,
+        get : function()  {
+          if( typeof property.oldMappingObjectGetter === 'function' ) property.oldMappingObjectGetter()
+          return property
+        },
+        set : function( v ) {
+          obj[ property.Name ] = v
+          if( typeof mapping.oldMappingObjectSetter === 'function' ) mapping.oldMappingObjectSetter( v )
+        }
+      })
+    }
+  },
+  
   createProxyProperty: function( obj, _key, shouldSeq, shouldRamp, dict, _useMappings, priority ) {
+    _useMappings = _useMappings === false ? false : true
+    
+    Gibber.defineProperty( obj, _key, shouldSeq, shouldRamp, dict, _useMappings, priority )
+  },
+  
+  _createProxyProperty: function( obj, _key, shouldSeq, shouldRamp, dict, _useMappings, priority ) {
     var propertyName = _key,
         useMappings = _useMappings === false ? false : true,
         propertyDict = useMappings ? dict || obj.mappingProperties[ propertyName ] : null,
-        __n = propertyName.charAt(0).toUpperCase() + propertyName.slice(1),
+        __n = propertyName.charAt( 0 ).toUpperCase() + propertyName.slice( 1 ),
         mapping, fnc
             
     mapping = $.extend( {}, propertyDict, {
@@ -526,7 +657,7 @@ var Gibber = {
     fnc = obj[ '_' + propertyName ] = ( function() {
       var _fnc = function(v) {
         if( typeof v !== 'undefined' ) {
-          mapping.value = v
+          mapping.value = v //mapping.oldSetter ? mapping.oldSetter( v ) : v 
           
           if( mapping.oldSetter ) { mapping.oldSetter( mapping.value ) }
           return obj
@@ -599,18 +730,14 @@ var Gibber = {
     var shouldSeq = typeof noSeq === 'undefined' ? true : noSeq,
         shouldRamp = typeof noRamp === 'undefined' ? true : noRamp
     
-    obj.gibber = true // keyword identifying gibber object, needed for notation parser
-    
-    if( !obj.seq && shouldSeq && Gibber.Audio) {
-      obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale })      
-    }
+    obj.gibber = true // keyword identifying gibber object, needed for notation parser    
     
     obj.mappingProperties = mappingProperties
     obj.mappingObjects = []
     
     for( var key in mappingProperties ) {
       if( ! mappingProperties[ key ].doNotProxy ) {
-        Gibber.createProxyProperty( obj, key, shouldSeq, shouldRamp )
+        Gibber.createProxyProperty( obj, key, shouldSeq, shouldRamp, mappingProperties[ key ] )
       }
     }
   },  

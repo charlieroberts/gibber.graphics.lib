@@ -3614,6 +3614,10 @@ var Gibber = {
     if( Gibber.Graphics ) {
       Gibber.Graphics.export( target )
     }
+    
+    if( Gibber.Interface ) {
+      Gibber.Interface.export( target )
+    }
   },
   
   init: function( _options ) {                        
@@ -3640,12 +3644,15 @@ var Gibber = {
           options.target.Master = Gibber.Audio.Master    
         }else{
           $.extend( Gibber, Gibber.Audio )
-        }
+        }        
       }
       
       if( Gibber.Graphics ) {
-        Gibber.Graphics.init( options.graphicsMode )
+        // this happens dynamically when a graphics object is first created to save CPU
+        // Gibber.Graphics.init( options.graphicsMode ) 
       }
+      
+      if( Gibber.Interface ) {}
       
       if( options.globalize ) {
         Gibber.export( options.target )
@@ -3676,14 +3683,17 @@ var Gibber = {
         Gibber.Environment.SERVER_URL + '/gibber/'+path, {},
         function( d ) {
           d = JSON.parse( d )
-          eval( d.text )
+                    
+          var f = new Function( "return " + d.text )
+          
+          Gibber.Modules[ path ] = f()
           
           if( exportTo && Gibber.Modules[ path ] ) {
             $.extend( exportTo, Gibber.Modules[ path ] )
-            Gibber.Modules[ path ] = exportTo
-          }  
+            //Gibber.Modules[ path ] = exportTo
+          }
           if( Gibber.Modules[ path ] ) {
-            if( Gibber.Modules[ path ].init ) {
+            if( typeof Gibber.Modules[ path ].init === 'function' ) {
               Gibber.Modules[ path ].init()
             }
             console.log( 'Module ' + path + ' is now loaded.' )
@@ -3885,13 +3895,13 @@ var Gibber = {
     F.prototype = constructor.prototype;
     return new F();
   },
-  
+
   createMappingObject : function(target, from) {
     var min = typeof target.min === 'function' ? target.min() : target.min,
         max = typeof target.max === 'function' ? target.max() : target.max,
         _min = typeof from.min === 'function' ? from.min() : from.min,
         _max = typeof from.max === 'function' ? from.max() : from.max
-        
+    
     if( typeof from.object === 'undefined' && from.Value) { // if using an interface object directly to map
       from = from.Value
     }
@@ -3911,7 +3921,7 @@ var Gibber = {
     
     mapping = Gibber.mappings[ target.timescale ][ fromTimescale ]( target, from )
     
-    target.object[ target.name ].toString = function() { return '> continuous mapping: ' + from.name + ' -> ' + target.name }
+    //target.object[ target.name ].toString = function() { return '> continuous mapping: ' + from.name + ' -> ' + target.name }
     
     Object.defineProperties( target.object[ target.Name ], {
       'min' : {
@@ -3961,7 +3971,13 @@ var Gibber = {
     
     target.object.mappings.push( mapping )
     
+    if( typeof from.object.mappings === 'undefined' ) from.object.mappings = []
+    
+    from.object.mappings.push( mapping )
+    
     Gibber.defineSequencedProperty( target.object[ target.Name ], 'invert' )
+    
+    return mapping
   },
   
   defineSequencedProperty : function( obj, key, priority ) {
@@ -3977,13 +3993,13 @@ var Gibber = {
     // }
     
     if( !obj.seq && Gibber.Audio ) {
-      obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale, priority:priority })
+      obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale, priority:priority, target:obj })
     }
     
     fnc.seq = function( v,d ) {  
 
       var args = {
-            key: key,
+            'key': key,
             values: $.isArray(v) || v !== null && typeof v !== 'function' && typeof v.length === 'number' ? v : [v],
             durations: $.isArray(d) ? d : typeof d !== 'undefined' ? [d] : null,
             target: obj,
@@ -4089,11 +4105,126 @@ var Gibber = {
     for( var i = 0; i < methods.length; i++ ) Gibber.defineSequencedProperty( obj, methods[ i ] ) 
   },
   
+  /*
+
+  seq: function( v, d ) {
+    if( !obj.seq ) obj.seq = Seq({ doNotStart:true, scale:obj.scale })
+  
+    var args = {
+      key: propertyName,
+      values: $.isArray(v) || v !== null && typeof v !== 'function' && typeof v.length === 'number' ? v : [v],
+      durations: $.isArray(d) ? d : typeof d !== 'undefined' ? [d] : null,
+      target: obj
+    }
+  
+    obj.seq.add( args )
+    obj.seq.start()
+  },
+  
+  */
+  
+  defineProperty : function( obj, propertyName, shouldSeq, shouldRamp, mappingsDictionary, shouldUseMappings, priority, useOldGetter ) {
+    var originalValue = typeof obj[ propertyName ] === 'object' ? obj[ propertyName ].valueOf() : obj[ propertyName ],
+        Name = propertyName.charAt( 0 ).toUpperCase() + propertyName.slice( 1 ),
+        property = function( v ) {
+          var returnValue = property
+          
+          if( v ) { 
+            obj[ propertyName ] = v
+            returnValue = obj
+          }
+          
+          return returnValue
+        }
+
+    // TODO: get rid of this line
+    mappingsDictionary = shouldUseMappings ? mappingsDictionary || obj.mappingProperties[ propertyName ] : null
+    
+    $.extend( property, mappingsDictionary )
+    
+    $.extend( property, {
+      'propertyName': propertyName, // can't redfine 'name' on a function, unless we eval or something...
+      'Name':   Name,  
+      value:    originalValue,
+      type:     'property',
+      object:   obj,
+      targets:  [],
+      valueOf:  function() { return property.value },
+      toString: function() { return property.value.toString() },
+      oldSetter: obj.__lookupSetter__( propertyName ),
+      oldGetter: obj.__lookupGetter__( propertyName ),      
+      oldMappingObjectGetter: obj.__lookupGetter__( Name ),
+      oldMappingObjectSetter: obj.__lookupSetter__( Name )
+    })
+    
+    Object.defineProperty( obj, propertyName, {
+      configurable:true,
+      get: function(){ 
+        // var returnValue = property
+        // if( useOldGetter ) {
+        //   console.log( property.oldGetter )
+        //   returnValue = property.oldGetter()
+        // }
+        // else if( property.oldMappingObjectGetter ) {
+        //   return property.oldMappingObjectGetter()
+        // }
+        // return returnValue || property
+        return property
+      },
+      set: function( v ){
+        if( (typeof v === 'function' || typeof v === 'object' && v.type === 'mapping') && ( v.type === 'property' || v.type === 'mapping' ) ) {
+          Gibber.createMappingObject( property, v )
+        }else{
+          if( shouldUseMappings && obj[ property.Name ] ) {
+            if( typeof obj[ property.Name ].mapping !== 'undefined' ) { 
+              if( obj[ property.Name ].mapping.remove ) obj[ property.Name ].mapping.remove( true )
+            }
+          }
+          
+          var newValue = v
+        
+          if( property.oldSetter ) {
+            var setterResult = property.oldSetter.call( obj, v )
+            if( typeof setterResult !== 'undefined' ) { newValue = setterResult }
+          }
+          
+          property.value = newValue
+        }
+        
+        return obj
+      }
+    })
+    
+    if( shouldSeq  ) Gibber.defineSequencedProperty( obj, propertyName, priority )
+    if( shouldRamp ) Gibber.defineRampedProperty( obj, propertyName )
+    
+    // capital letter mapping sugar
+    if( shouldUseMappings ) {
+      Object.defineProperty( obj, property.Name, {
+        configurable: true,
+        get : function()  {
+          if( typeof property.oldMappingObjectGetter === 'function' ) property.oldMappingObjectGetter()
+          return property
+        },
+        set : function( v ) {
+          obj[ property.Name ] = v
+          if( typeof mapping.oldMappingObjectSetter === 'function' ) mapping.oldMappingObjectSetter( v )
+        }
+      })
+    }
+  },
+  
   createProxyProperty: function( obj, _key, shouldSeq, shouldRamp, dict, _useMappings, priority ) {
+    _useMappings = _useMappings === false ? false : true
+    
+    Gibber.defineProperty( obj, _key, shouldSeq, shouldRamp, dict, _useMappings, priority )
+  },
+  
+  _createProxyProperty: function( obj, _key, shouldSeq, shouldRamp, dict, _useMappings, priority ) {
     var propertyName = _key,
         useMappings = _useMappings === false ? false : true,
         propertyDict = useMappings ? dict || obj.mappingProperties[ propertyName ] : null,
-        __n = propertyName.charAt(0).toUpperCase() + propertyName.slice(1),
+        __n = propertyName.charAt( 0 ).toUpperCase() + propertyName.slice( 1 ),
         mapping, fnc
             
     mapping = $.extend( {}, propertyDict, {
@@ -4118,7 +4249,7 @@ var Gibber = {
     fnc = obj[ '_' + propertyName ] = ( function() {
       var _fnc = function(v) {
         if( typeof v !== 'undefined' ) {
-          mapping.value = v
+          mapping.value = v //mapping.oldSetter ? mapping.oldSetter( v ) : v 
           
           if( mapping.oldSetter ) { mapping.oldSetter( mapping.value ) }
           return obj
@@ -4191,18 +4322,14 @@ var Gibber = {
     var shouldSeq = typeof noSeq === 'undefined' ? true : noSeq,
         shouldRamp = typeof noRamp === 'undefined' ? true : noRamp
     
-    obj.gibber = true // keyword identifying gibber object, needed for notation parser
-    
-    if( !obj.seq && shouldSeq && Gibber.Audio) {
-      obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale })      
-    }
+    obj.gibber = true // keyword identifying gibber object, needed for notation parser    
     
     obj.mappingProperties = mappingProperties
     obj.mappingObjects = []
     
     for( var key in mappingProperties ) {
       if( ! mappingProperties[ key ].doNotProxy ) {
-        Gibber.createProxyProperty( obj, key, shouldSeq, shouldRamp )
+        Gibber.createProxyProperty( obj, key, shouldSeq, shouldRamp, mappingProperties[ key ] )
       }
     }
   },  
@@ -5035,6 +5162,7 @@ for( var key in types) {
         this.material = new THREE.ShaderMaterial( arguments[0].shader.material || arguments[0].shader );
         if( arguments[0].shader.material ) arguments[0].shader.target = this
       }
+      
       this.geometry = Gibber.construct( THREE[ type + "Geometry" ], args )
       
       this.mesh = new THREE.Mesh( this.geometry, this.material )
@@ -5045,159 +5173,72 @@ for( var key in types) {
       this.mappingObjects = []
       
       var ltrs = { x:'X', y:'Y', z:'Z' }
-      for( var i = 0; i < vectors.length; i++ ) {
+      for( var i = 0; i < vectors.length; i++ ) { 
         
         (function( obj ) { // for each vector rotation, scale, position
-          var prop = vectors[ i ],
-              property = prop === 'scale' ? Vec3(1, 1, 1) : Vec3(),
+          var propertyName = vectors[ i ],
+              propertyObject = propertyName === 'scale' ? Vec3(1, 1, 1) : Vec3(),
               update = function() { 
-                //console.log( property.toArray() )
-                obj.mesh[ prop ].set( property.x(), property.y(), property.z() )
-                //obj.mesh[ prop ].set.apply( obj.mesh[ prop ], property.toArray() ) 
+                obj.mesh[ propertyName ].set( propertyObject.x, propertyObject.y, propertyObject.z )
               },
-              x = property.x, y = property.y, z = property.z
+              x = propertyObject.x, y = propertyObject.y, z = propertyObject.z
+
+          propertyObject.name = type + '.' + propertyName
+          propertyObject.seq  = obj.seq
           
-          Object.defineProperties( property, {
-            x: { get: function() { return x }, set: function(v) { x = v; update() }, configurable:true },
-            y: { get: function() { return y }, set: function(v) { y = v; update() }, configurable:true },
-            z: { get: function() { return z }, set: function(v) { z = v; update() }, configurable:true },
-          })
-          
-          property.name = type + '.' + prop
-          
-          for(var _ltr in ltrs) {
-            (function() {
-              var ltr = _ltr,
-                  Ltr = ltrs[ ltr ],
-                  propertyDict = mappingProperties[ prop ],
-                  propertyName = prop + ltr,
-                  mapping = $.extend( {}, propertyDict, {
-                    Name  : Ltr,
-                    name  : ltr,
-                    modName : prop + '.' + ltr,
-                    type  : 'mapping',
-                    value : property[ ltr ],
-                    object: property,
-                    modObject: obj,
-                    targets:[],
-                    oldSetter: property.__lookupSetter__( ltr ),
-                    oldGetter: property.__lookupGetter__( ltr ),            
-                    set : function( val )  { property[ ltr ] = val },
-                  }),
-                  fnc
-              
-              mapping.object = property
-              
-              fnc = obj[ '_' + propertyName ] = function(v) {
-                if( typeof v !== 'undefined' ) {
-                  mapping.value = v
-                  mapping.oldSetter( mapping.value ) 
-                }
-                  
-                return mapping.value
-              }
-    
-              fnc.set = function(v) { 
-                mapping.value = v; 
-                mapping.oldSetter( mapping.value ) 
-              }
-    
-              fnc.valueOf = function() { return mapping.value }
-              
-              Object.defineProperty( property, Ltr, {
-                get: function()  { return mapping },
-                set: function(v) { 
-                  property[ Ltr ] = v 
-                }
-              })
-              
-              Object.defineProperty( property, ltr, {
-                get: function() { return obj[ '_' + propertyName ] },
-                set: function(v) {
-                  if( typeof v === 'object' && v.type === 'mapping' ) {
-                    Gibber.createMappingObject( mapping, v )
-                  }else{
-                    if( mapping.mapping ) mapping.mapping.remove()
-                    obj[ '_' + propertyName ]( v )
-                  }
-                }
-              })
-              
-              Gibber.defineSequencedProperty( obj, '_' + propertyName )
-              Gibber.defineRampedProperty( obj, '_' + propertyName )
-            })()
-          }
-                    
-          var propertyDict = mappingProperties[ prop ], 
-              mapping
-              
-          mapping = $.extend( {}, propertyDict, {
-            Name  : prop.charAt(0).toUpperCase() + prop.slice(1),
-            name  : prop,
-            type  : 'mapping',
-            value : property,
-            object: obj,
-            targets:[],
-            oldSetter : function(v) {
+          Object.defineProperty( obj, propertyName, {
+            configurable:true,
+            get: function() { return propertyObject },
+            set: function( v ) {
               switch( $.type( v ) ) {
                 case 'object' :
-                  if(typeof v.x === 'number') property.x = v.x
-                  if(typeof v.y === 'number') property.y = v.y
-                  if(typeof v.z === 'number') property.z = v.z
+                  if(typeof v.x === 'number') propertyObject.x = v.x
+                  if(typeof v.y === 'number') propertyObject.y = v.y
+                  if(typeof v.z === 'number') propertyObject.z = v.z
                 break;
                 case 'array' :
-                  if(typeof v[0] === 'number') property.x = v[ 0 ]
-                  if(typeof v[1] === 'number') property.y = v[ 1 ]
-                  if(typeof v[2] === 'number') property.z = v[ 2 ]
+                  if(typeof v[0] === 'number') propertyObject.x = v[ 0 ]
+                  if(typeof v[1] === 'number') propertyObject.y = v[ 1 ]
+                  if(typeof v[2] === 'number') propertyObject.z = v[ 2 ]
                   break;
                 case 'number' :
-                  x = y = z = v
+                  propertyObject.x = propertyObject.y = propertyObject.z = v
                   break;
               }
               update()
+              
+              return propertyObject
             }
+          })
+          
+          //obj[ propertyName ] = propertyObject
+          
+          Gibber.defineProperty( obj, propertyName, true, true, mappingProperties[ propertyName ], true, false, true )
+
+          Object.defineProperties( obj[ propertyName ], {
+            x: { get: function() { return propertyObject.x }, set: function(v) { propertyObject.x = v; update() }, configurable:true },
+            y: { get: function() { return propertyObject.y }, set: function(v) { propertyObject.y = v; update() }, configurable:true },
+            z: { get: function() { return propertyObject.z }, set: function(v) { propertyObject.z = v; update() }, configurable:true },
           })
 
-          Object.defineProperty( obj, prop, {
-            get: function() { return property },
-            set: function(v) {
-              if( mapping.mapping ) mapping.mapping.remove()
-              switch( $.type( v ) ) {
-                case 'object' :
-                  if( v.type === 'mapping' ) {
-                    Gibber.createMappingObject( mapping, v )
-                  }else{
-                    if(typeof v.x === 'number') property.x = v.x
-                    if(typeof v.y === 'number') property.y = v.y
-                    if(typeof v.z === 'number') property.z = v.z
-                  }
-                  break;
-                case 'array' :
-                  if(typeof v[0] === 'number') property.x = v[ 0 ]
-                  if(typeof v[1] === 'number') property.y = v[ 1 ]
-                  if(typeof v[2] === 'number') property.z = v[ 2 ]
-                  break;
-                case 'number' :                  
-                  property.x = property.y = property.z = v
-                  break;
-              }
-              update()
-            },            
-          })
-                    
-          Object.defineProperty( obj, mapping.Name, {
-            get: function() { return mapping },
-            set: function(v) {
-              if( typeof v === 'object' && v.type === 'mapping' ) {
-                Gibber.createMappingObject( mapping, v )
-              }
-            }
-          })
-          
-          property.mappings = []
-          Gibber.defineSequencedProperty( obj, prop )
-          Gibber.defineRampedProperty( obj, prop )
-          
+          for(var _ltr in ltrs) {
+            !function() {
+              var l = _ltr
+              
+              Gibber.defineProperty( obj[ propertyName ], _ltr, true, true, mappingProperties[ propertyName ], true )
+              // Gibber.defineProperty( propertyObject, _ltr, true, true, mappingProperties[ propertyName ], true )
+            
+              obj[ propertyName ][ l ].modObject = obj
+              obj[ propertyName ][ l ].modName = propertyName + '.' + l
+              // propertyObject[ l ].modObject = obj
+              // propertyObject[ l ].modName = propertyName + '.' + l
+              
+              
+              // avoid removing multimodal mapping by directly changing property object value
+              obj[ propertyName ][ l ].set = function( v ) { propertyObject[ l ] = v; update() }
+              // propertyObject[ l ].set = function( v ) { propertyObject[ l ] = v; update() }
+            }()
+          }
         })( this )
         
       }
@@ -5377,9 +5418,8 @@ for( var key in types) {
           if( $.isArray( v ) ) {
             v = Color().rgb( v[0] * 255, v[1] * 255, v[2] * 255 ).hexString()
           }
-          console.log( "COLOR", v )
-          this.material.color.set( v )
-          
+
+          this.material.color.set( v )          
         }
       })
       
@@ -5666,7 +5706,7 @@ Graphics = {
     if( typeof _container === 'undefined' || _container === null ) {
       container = document.querySelector( Graphics.defaultContainer )
     }else{
-      container = _container.element
+      container = _container.bodyElement
     }
     
     return container
@@ -5690,7 +5730,7 @@ Graphics = {
       // }
     }
     
-    if( this.modes[ this.mode ].obj.init ) { this.modes[ this.mode ].obj.init() }
+    if( this.modes[ this.mode ].obj.init ) { this.modes[ this.mode ].obj.init( container ) }
     
     if( this.modes[ this.mode ].canvas !== null ) {
       this.canvas = this.modes[ this.mode ].canvas
@@ -5701,11 +5741,11 @@ Graphics = {
     if( typeof container === 'undefined' || container === null ) {
       this.canvas.parent = document.querySelector( Graphics.defaultContainer )
     }else{
-      this.canvas.parent = container.element
+      this.canvas.parent = container.bodyElement || container
       //container.element.find( '.editor' ).remove()
     }
     
-    this.sizeCanvas( this.canvas )
+    this.positionCanvas( this.canvas )
     this.assignWidthAndHeight( true )
     
     this.modes[ this.mode ].obj.setSize( this.width * this.resolution, this.height * this.resolution )
@@ -5754,15 +5794,15 @@ Graphics = {
     this.initialized = true   
   },
   
-  sizeCanvas: function( canvas ) {
+  positionCanvas: function( canvas ) {
     var body = document.querySelector( 'body' ),
         appendedToBody = canvas.parent === body
-        
+    
     canvas.style.left = 0
-    canvas.style.top = appendedToBody ? 0 : 32
-    canvas.style.position = 'fixed'
+    canvas.style.top = appendedToBody ? 32 : 0
+    canvas.style.position = appendedToBody ? 'fixed' : 'relative'
     //canvas.style.position = canvas.parent === document ? 'fixed' : 'relative'
-    canvas.style.float    = canvas.parent === document ? 'none' : 'left'
+    canvas.style.float    = appendedToBody ? 'none' : 'left'
     canvas.style.overflow = 'hidden'
     canvas.style.display  = 'block'
     
@@ -5865,12 +5905,11 @@ Graphics = {
 	},
   
   assignWidthAndHeight : function( isInitialSetting ) { // don't run final lines before renderer is setup...
-    Graphics.width  = Graphics.canvas.parent === window ? window.innerWidth  : (Graphics.canvas.parent.offsetWidth || Graphics.canvas.parent.width() ) //$( this.canvas.parent ).width() // either column or window... 
-    Graphics.height = Graphics.canvas.parent === window ? window.innerHeight : (Graphics.canvas.parent.offsetHeight || document.querySelector('.column').offsetHeight )//$( window ).height()
+    Graphics.width  = Graphics.canvas.parent === window ? window.innerWidth  : (Graphics.canvas.parent.offsetWidth || Graphics.canvas.parent.width() ) 
+    Graphics.height = Graphics.canvas.parent === window ? window.innerHeight : (Graphics.canvas.parent.offsetHeight || Graphics.canvas.parent[0].offsetHeight )
     
     if( document.querySelector( '#header' ) !== null && Graphics.canvas.parent === window ) {
       if( Gibber.Environment.Layout.fullScreenColumn === null) { 
-        //Graphics.height -= $( "#header" ).height() + $( "tfoot" ).height()
       }
     }
     
@@ -6875,15 +6914,13 @@ module.exports = function( Gibber, Graphics ) {
   return Video 
 }
 },{}],31:[function(_dereq_,module,exports){
-// TODO: add Map to utilities? breaks graphics currently...
-
 module.exports = function( Gibber, Gibberish ) {  
   var mappings = {
     audio : {
       graphics: function( target, from ) {
 				if( typeof from.object.track === 'undefined' ) from.object.track = {}
 				
-        var proxy = typeof from.object.track[ from.name ] !== 'undefined' ? from.object.track[ from.name ] : new Gibberish.Proxy2( from.object, from.name ),
+        var proxy = typeof from.object.track[ from.propertyName ] !== 'undefined' ? from.object.track[ from.propertyName ] : new Gibberish.Proxy2( from.object, from.propertyName ),
             op    = new Gibberish.OnePole({ a0:.005, b1:.995 }),
             mapping
         
@@ -6893,14 +6930,14 @@ module.exports = function( Gibber, Gibberish ) {
         
         op.input = mapping
         
-        target.object[ target.name ] = op
+        target.object[ target.propertyName ] = op
         
         mapping.proxy = proxy
         mapping.op = op
         
         mapping.remove = function( doNotSet ) {
           if( !doNotSet ) {
-            target.object[ target.name ] = target.object[ target.Name ].mapping.getValue()
+            target.object[ target.propertyName ] = target.object[ target.Name ].mapping.getValue()
           }
           
           delete target.object[ target.Name ].mapping
@@ -6909,10 +6946,11 @@ module.exports = function( Gibber, Gibberish ) {
         return mapping
       },
       interface: function( target, from ) {
+        // TODO: why does the proxy track from.name instead of from.propertyName? maybe because interface elements don't get passed to mapping init?
         var proxy = typeof from.track !== 'undefined' ? from.track : new Gibberish.Proxy2( from.object, from.name ),
             op    = new Gibberish.OnePole({ a0:.005, b1:.995 }),
             range = target.max - target.min,
-            percent = ( target.object[ target.name ] - target.min ) / range,
+            percent = ( target.object[ target.propertyName ] - target.min ) / range,
             widgetValue = from.min + ( ( from.max - from.min ) * percent ),
             mapping
                 
@@ -6923,13 +6961,13 @@ module.exports = function( Gibber, Gibberish ) {
         mapping = target.object[ target.Name ].mapping = Gibber.Audio.Core.Binops.Map( proxy, target.min, target.max, from.min, from.max, target.output, from.wrap ) 
         
         op.input = mapping
-        target.object[ target.name ] = op
+        target.object[ target.propertyName ] = op
         
         mapping.proxy = proxy
         mapping.op = op
 
         mapping.remove = function( doNotSet ) {
-          if( !doNotSet ) target.object[ target.name ] = mapping.getValue()
+          if( !doNotSet ) target.object[ target.propertyName ] = mapping.getValue()
           
           //if( mapping.op ) mapping.op.remove()
           
@@ -6960,18 +6998,18 @@ module.exports = function( Gibber, Gibberish ) {
           proxy = from.object.track
           proxy.count++
         } else {
-          proxy = new Gibberish.Proxy2( from.object, from.name )
+          proxy = new Gibberish.Proxy2( from.object, from.propertyName )
           proxy.count = 1
         }
         from.object.track = proxy
         
-        target.object[ target.name ] = Gibber.Audio.Core.Binops.Map( proxy, target.min, target.max, from.min, from.max )
+        target.object[ target.propertyName ] = Gibber.Audio.Core.Binops.Map( proxy, target.min, target.max, from.min, from.max )
         
-        mapping = target.object[ target.Name ].mapping = target.object[ target.name ]() // must call getter function explicitly
+        mapping = target.object[ target.Name ].mapping = target.object[ target.propertyName ] // must call getter function explicitly
         
         mapping.remove = function( doNotSet ) {
           if( !doNotSet ) {
-            target.object[ target.name ] = mapping.getValue()
+            target.object[ target.propertyName ] = mapping.getValue()
           }
           
           if( mapping.op ) mapping.op.remove()
@@ -6992,23 +7030,23 @@ module.exports = function( Gibber, Gibberish ) {
       audioOut : function( target, from ) {
         var mapping
         
-        target.object[ target.name ] = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, 0, 1, 0 )   
-        mapping = target.object[ target.Name ].mapping = target.object[ target.name ]() // must call getter function explicitly
+        mapping = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, 0, 1, 0 )
+        
+        target.object[ target.propertyName ] = target.object[ target.Name ].mapping = mapping
         
         if( typeof from.object.track !== 'undefined' ) {
           mapping.follow = from.object.track
           mapping.follow.count++
         } else {
-          mapping.follow = new Gibberish.Follow({ input:from.object, useAbsoluteValue: true })
+          mapping.follow = new Gibber.Audio.Analysis.Follow({ input:from.object, useAbsoluteValue: true })
           mapping.follow.count = 1
         }
-        from.object.track = mapping.follow
         
-        mapping.input = target.object[ target.Name ].mapping.follow
+        from.object.track = mapping.input = mapping.follow
         
         mapping.remove = function( doNotSet ) {
           if( !doNotSet ) {
-            target.object[ target.name ] = target.object[ target.Name ].mapping.getValue()
+            target.object[ target.propertyName ] = target.object[ target.Name ].mapping.getValue()
           }
           
           if( mapping.bus )
@@ -7043,31 +7081,31 @@ module.exports = function( Gibber, Gibberish ) {
     graphics: {
       graphics: function( target, from ) {
         // rewrite getValue function of Map object to call Map callback and then return appropriate value
-        var map = Gibber.Audio.Core.Binops.Map( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
+        var map = Gibber.Audio.Core.Binops.Map( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
             old = map.getValue.bind( map ),
             mapping
         
         map.getValue = function() {
-          //console.log( from.name, from, target.min, target.max, from.min, from.max )
-          map.callback( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
+          //console.log( from.propertyName, from, target.min, target.max, from.min, from.max )
+          map.callback( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap )
           return old()
         }
         
         mapping = target.object[ target.Name ].mapping = map
         
         if( target.object.mod ) { // second case accomodates modding individual [0][1][2] properties fo vectors
-          target.object.mod( target.name, mapping, '=' )
+          target.object.mod( target.propertyName, mapping, '=' )
         }else{
           target.modObject.mod( target.modName, mapping, '=' )
         }
         
         mapping.remove = function() {
           if( target.object.mod ) {
-            target.object.removeMod( target.name )
+            target.object.removeMod( target.propertyName )
           }else{
             target.modObject.removeMod( target.modName )
           }
-          target.object[ target.name ] = target.object[ target.Name ].mapping.getValue()
+          target.object[ target.propertyName ] = target.object[ target.Name ].mapping.getValue()
           
           delete target.object[ target.Name ].mapping
         }
@@ -7077,7 +7115,7 @@ module.exports = function( Gibber, Gibberish ) {
         return mapping
       },
       interface: function( target, from ) {
-        // console.log( "FROM", from.name, target.min, target.max, from.min, from.max )
+        // console.log( "FROM", from.propertyName, target.min, target.max, from.min, from.max )
         var _map = Gibber.Audio.Core.Binops.Map( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
             mapping
             
@@ -7094,7 +7132,7 @@ module.exports = function( Gibber, Gibberish ) {
 
         target.mapping.from = from
         
-        var fcn_name = target.name + ' <- ' + from.object.name + '.' + from.Name
+        var fcn_name = target.propertyName + ' <- ' + from.object.propertyName + '.' + from.Name
 
         from.object.functions[ fcn_name ] = function() {
           var val = mapping.callback( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
@@ -7103,8 +7141,8 @@ module.exports = function( Gibber, Gibberish ) {
           target.object[ target.Name ].oldSetter.call( target.object[ target.Name ], val )
         }
         // from.object.onvaluechange = function() {          
-        //   var val = map.callback( this[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
-        //   target.object[ target.name ] = val
+        //   var val = map.callback( this[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap )
+        //   target.object[ target.propertyName ] = val
         // }
         mapping.replace = function() {
           // var old = from.functions[ target.Name ]
@@ -7116,16 +7154,16 @@ module.exports = function( Gibber, Gibberish ) {
         } 
         
         if( from.object.setValue ) 
-          from.object.setValue( target.object[ target.name ] )
+          from.object.setValue( target.object[ target.propertyName ] )
         
         // if( typeof from.object.label !== 'undefined' ) {
-        //   from.object.label = target.object.name + '.' + target.Name
+        //   from.object.label = target.object.propertyName + '.' + target.Name
         // }
         if( typeof from.object.label !== 'undefined' ) { 
           var labelString = ''
           for( var i = 0; i < from.targets.length; i++ ) {
             var __target = from.targets[ i ]
-            labelString += __target[0].object.name + '.' + __target[1]
+            labelString += __target[0].object.propertyName + '.' + __target[1]
             if( i !== from.targets.length - 1 ) labelString += ' & '
           }
           from.object.label = labelString
@@ -7138,7 +7176,8 @@ module.exports = function( Gibber, Gibberish ) {
         
         mapping = target.object[ target.Name ].mapping = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, from.min, from.max, target.output, from.wrap )
       
-        mapping.follow = typeof from.object.track !== 'undefined' ? from.object.track : new Gibberish.Follow({ input:from.object.properties[ from.name ], useAbsoluteValue: false })
+        mapping.follow = typeof from.object.track !== 'undefined' ? from.object.track : new Gibberish.Follow({ input:from.object[ from.propertyName ], useAbsoluteValue: false })
+        
         from.object.track = target.object[ target.Name ].mapping.follow
         // assign input after Map ugen is created so that follow can be assigned to the mapping object
         mapping.input = mapping.follow
@@ -7160,7 +7199,7 @@ module.exports = function( Gibber, Gibberish ) {
         
         if( target.object.mod ) { // second case accomodates modding individual [0][1][2] properties fo vectors
           //console.log( target.object, target.object.mod )
-          target.object.mod( target.name, mapping, '=' )
+          target.object.mod( target.propertyName, mapping, '=' )
         }else{
           target.modObject.mod( target.modName, mapping, '=' )
         }
@@ -7177,7 +7216,7 @@ module.exports = function( Gibber, Gibberish ) {
           }
 
           if( target.object.mod ) {
-            target.object.removeMod( target.name )
+            target.object.removeMod( target.propertyName )
           }else{
             target.modObject.removeMod( target.modName )
           }
@@ -7188,9 +7227,7 @@ module.exports = function( Gibber, Gibberish ) {
         return mapping
       },
       audioOut : function( target, from ) {
-        console.log( target.Name, target.object )
         if( typeof target.object[ target.Name ].mapping === 'undefined') {
-          console.log("MAKING A MAPPING")
           var mapping = target.object[ target.Name ].mapping = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, 0, 1, 0 )   
           if( typeof from.object.track !== 'undefined' ) {
             mapping.follow = from.object.track
@@ -7233,23 +7270,23 @@ module.exports = function( Gibber, Gibberish ) {
           }
         }else{
           console.log("REPLACING MAPPING")
-          mapping.replace( from.object, from.name, from.Name )
+          mapping.replace( from.object, from.propertyName, from.Name )
           return mapping
         }
         
-        if( target.object.mod ) { // second case accomodates modding individual [0][1][2] properties fo vectors
+        if( target.object.mod ) { // second case accomodates modding individual [0][1][2] properties of vectors
           //console.log( target.object, target.object.mod )
-          target.object.mod( target.name, mapping, '=' )
+          target.object.mod( target.propertyName, mapping, '=' )
         }else if (target.modObject) {
           target.modObject.mod( target.modName, mapping, '=' )
         }else{
           !function() {
             var _mapping = mapping
             target.object.update = function() { 
-              target.object[ target.name ]( _mapping.getValue() )
+              target.object[ target.propertyName ]( _mapping.getValue() )
             }
           }()
-          //target.object.mod( target.name, mapping, '=' ) 
+          //target.object.mod( target.propertyName, mapping, '=' ) 
         }
         
         //target.object[ target.Name ].mapping = mapping
@@ -7266,12 +7303,22 @@ module.exports = function( Gibber, Gibberish ) {
           }
 
           if( target.object.mod ) {
-            target.object.removeMod( target.name )
+            target.object.removeMod( target.propertyName )
           }else if( target.modObject ) {
             target.modObject.removeMod( target.modName )
           }else{
             console.log( 'removing update ')
             //target.object.update = function() {}
+          }
+          
+          target.object.mappings.splice( target.object.mappings.indexOf( mapping ), 1 )
+          from.object.mappings.splice( from.object.mappings.indexOf( mapping ), 1 ) 
+          
+          var targets = target.object[ target.Name ].targets,
+              idx = targets.indexOf( mappings )
+          
+          if( idx !== -1 ) {
+            targets.splice( idx, 1 )
           }
           
           delete target.object[ target.Name ].mapping
@@ -7283,30 +7330,30 @@ module.exports = function( Gibber, Gibberish ) {
       graphics: function( target, from ) {
         // rewrite getValue function of Map object to call Map callback and then return appropriate value
 
-        var map = Gibber.Audio.Core.Binops.Map( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
+        var map = Gibber.Audio.Core.Binops.Map( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
             old = map.getValue.bind( map ),
             mapping
         
         map.getValue = function() {
-          map.callback( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
+          map.callback( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap )
           return old()
         }
         
         mapping = target.object[ target.Name ].mapping = map
         
         if( target.object.mod ) { // second case accomodates modding individual [0][1][2] properties fo vectors
-          target.object.mod( target.name, mapping, '=' )
+          target.object.mod( target.propertyName, mapping, '=' )
         }else{
           target.modObject.mod( target.modName, mapping, '=' )
         }
         
         mapping.remove = function() {
           if( target.object.mod ) {
-            target.object.removeMod( target.name )
+            target.object.removeMod( target.propertyName )
           }else{
             target.modObject.removeMod( target.modName )
           }
-          target.object[ target.name ] = target.object[ target.Name ].mapping.getValue()
+          target.object[ target.propertyName ] = target.object[ target.Name ].mapping.getValue()
           
           delete target.object[ target.Name ].mapping
         }
@@ -7316,8 +7363,8 @@ module.exports = function( Gibber, Gibberish ) {
         return mapping
       },
       interface: function( target, from ) {
-        // console.log( "FROM", from.name, target.min, target.max, from.min, from.max )
-        var _map = Gibber.Audio.Core.Binops.Map( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
+        // console.log( "FROM", from.propertyName, target.min, target.max, from.min, from.max )
+        var _map = Gibber.Audio.Core.Binops.Map( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
             mapping
             
         if( typeof from.object.functions === 'undefined' ) {
@@ -7333,17 +7380,17 @@ module.exports = function( Gibber, Gibberish ) {
 
         target.mapping.from = from
         
-        var fcn_name = target.name + ' <- ' + from.object.name + '.' + from.Name
+        var fcn_name = target.propertyName + ' <- ' + from.object.propertyName + '.' + from.Name
 
         from.object.functions[ fcn_name ] = function() {
-          var val = mapping.callback( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
+          var val = mapping.callback( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap )
           // target.object[ target.Name ].value = val
           // console.log( target.Name )
           target.object[ target.Name ].oldSetter.call( target.object[ target.Name ], val )
         }
         // from.object.onvaluechange = function() {          
-        //   var val = map.callback( this[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
-        //   target.object[ target.name ] = val
+        //   var val = map.callback( this[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap )
+        //   target.object[ target.propertyName ] = val
         // }
         mapping.replace = function() {
           // var old = from.functions[ target.Name ]
@@ -7355,16 +7402,16 @@ module.exports = function( Gibber, Gibberish ) {
         } 
         
         if( from.object.setValue ) 
-          from.object.setValue( target.object[ target.name ] )
+          from.object.setValue( target.object[ target.propertyName ] )
         
         // if( typeof from.object.label !== 'undefined' ) {
-        //   from.object.label = target.object.name + '.' + target.Name
+        //   from.object.label = target.object.propertyName + '.' + target.Name
         // }
         if( typeof from.object.label !== 'undefined' ) { 
           var labelString = ''
           for( var i = 0; i < from.targets.length; i++ ) {
             var __target = from.targets[ i ]
-            labelString += __target[0].object.name + '.' + __target[1]
+            labelString += __target[0].object.propertyName + '.' + __target[1]
             if( i !== from.targets.length - 1 ) labelString += ' & '
           }
           from.object.label = labelString
@@ -7377,11 +7424,11 @@ module.exports = function( Gibber, Gibberish ) {
         
         mapping = target.object[ target.Name ].mapping = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, from.min, from.max, target.output, from.wrap )
   
-        if( typeof from.object.track !== 'undefined' && from.object.track.input === from.object.properties[ from.name ] ) {
+        if( typeof from.object.track !== 'undefined' && from.object.track.input === from.object.properties[ from.propertyName ] ) {
           mapping.follow = from.object.track
           mapping.follow.count++
         }else{
-          mapping.follow = new Gibberish.Follow({ input:from.object.properties[ from.name ], useAbsoluteValue: false })
+          mapping.follow = new Gibberish.Follow({ input:from.object.properties[ from.propertyName ], useAbsoluteValue: false })
           mapping.follow.count = 1
         }
         
@@ -7406,7 +7453,7 @@ module.exports = function( Gibber, Gibberish ) {
         })
         
         mapping.update = function() {   
-          target.object[ target.name ]( mapping.getValue() )
+          target.object[ target.propertyName ]( mapping.getValue() )
         }
         mapping.text = target.object
 
@@ -7437,7 +7484,7 @@ module.exports = function( Gibber, Gibberish ) {
           
           console.log( "MAPPING", from )
           
-          if( typeof from.object.track !== 'undefined' && from.object.track.input === from.object.properties[ from.name ] ) {
+          if( typeof from.object.track !== 'undefined' && from.object.track.input === from.object.properties[ from.propertyName ] ) {
             mapping.follow = from.object.track
             mapping.follow.count++
           }else{
@@ -7478,12 +7525,12 @@ module.exports = function( Gibber, Gibberish ) {
             
           }
         }else{
-          mapping.replace( from.object, from.name, from.Name )
+          mapping.replace( from.object, from.propertyName, from.Name )
           return mapping
         }
         
         mapping.update = function() {   
-          target.object[ target.name ]( mapping.getValue() )
+          target.object[ target.propertyName ]( mapping.getValue() )
         }
         mapping.text = target.object
 
@@ -7513,7 +7560,7 @@ module.exports = function( Gibber, Gibberish ) {
   return mappings
 }
 
-module.exports.outputCurves = {
+module.exports.outputCurves= {
   LINEAR:0,
   LOGARITHMIC:1
 }

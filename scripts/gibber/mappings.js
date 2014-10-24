@@ -1,12 +1,10 @@
-// TODO: add Map to utilities? breaks graphics currently...
-
 module.exports = function( Gibber, Gibberish ) {  
   var mappings = {
     audio : {
       graphics: function( target, from ) {
 				if( typeof from.object.track === 'undefined' ) from.object.track = {}
 				
-        var proxy = typeof from.object.track[ from.name ] !== 'undefined' ? from.object.track[ from.name ] : new Gibberish.Proxy2( from.object, from.name ),
+        var proxy = typeof from.object.track[ from.propertyName ] !== 'undefined' ? from.object.track[ from.propertyName ] : new Gibberish.Proxy2( from.object, from.propertyName ),
             op    = new Gibberish.OnePole({ a0:.005, b1:.995 }),
             mapping
         
@@ -16,14 +14,14 @@ module.exports = function( Gibber, Gibberish ) {
         
         op.input = mapping
         
-        target.object[ target.name ] = op
+        target.object[ target.propertyName ] = op
         
         mapping.proxy = proxy
         mapping.op = op
         
         mapping.remove = function( doNotSet ) {
           if( !doNotSet ) {
-            target.object[ target.name ] = target.object[ target.Name ].mapping.getValue()
+            target.object[ target.propertyName ] = target.object[ target.Name ].mapping.getValue()
           }
           
           delete target.object[ target.Name ].mapping
@@ -32,10 +30,11 @@ module.exports = function( Gibber, Gibberish ) {
         return mapping
       },
       interface: function( target, from ) {
+        // TODO: why does the proxy track from.name instead of from.propertyName? maybe because interface elements don't get passed to mapping init?
         var proxy = typeof from.track !== 'undefined' ? from.track : new Gibberish.Proxy2( from.object, from.name ),
             op    = new Gibberish.OnePole({ a0:.005, b1:.995 }),
             range = target.max - target.min,
-            percent = ( target.object[ target.name ] - target.min ) / range,
+            percent = ( target.object[ target.propertyName ] - target.min ) / range,
             widgetValue = from.min + ( ( from.max - from.min ) * percent ),
             mapping
                 
@@ -46,13 +45,13 @@ module.exports = function( Gibber, Gibberish ) {
         mapping = target.object[ target.Name ].mapping = Gibber.Audio.Core.Binops.Map( proxy, target.min, target.max, from.min, from.max, target.output, from.wrap ) 
         
         op.input = mapping
-        target.object[ target.name ] = op
+        target.object[ target.propertyName ] = op
         
         mapping.proxy = proxy
         mapping.op = op
 
         mapping.remove = function( doNotSet ) {
-          if( !doNotSet ) target.object[ target.name ] = mapping.getValue()
+          if( !doNotSet ) target.object[ target.propertyName ] = mapping.getValue()
           
           //if( mapping.op ) mapping.op.remove()
           
@@ -83,18 +82,18 @@ module.exports = function( Gibber, Gibberish ) {
           proxy = from.object.track
           proxy.count++
         } else {
-          proxy = new Gibberish.Proxy2( from.object, from.name )
+          proxy = new Gibberish.Proxy2( from.object, from.propertyName )
           proxy.count = 1
         }
         from.object.track = proxy
         
-        target.object[ target.name ] = Gibber.Audio.Core.Binops.Map( proxy, target.min, target.max, from.min, from.max )
+        target.object[ target.propertyName ] = Gibber.Audio.Core.Binops.Map( proxy, target.min, target.max, from.min, from.max )
         
-        mapping = target.object[ target.Name ].mapping = target.object[ target.name ]() // must call getter function explicitly
+        mapping = target.object[ target.Name ].mapping = target.object[ target.propertyName ] // must call getter function explicitly
         
         mapping.remove = function( doNotSet ) {
           if( !doNotSet ) {
-            target.object[ target.name ] = mapping.getValue()
+            target.object[ target.propertyName ] = mapping.getValue()
           }
           
           if( mapping.op ) mapping.op.remove()
@@ -115,23 +114,23 @@ module.exports = function( Gibber, Gibberish ) {
       audioOut : function( target, from ) {
         var mapping
         
-        target.object[ target.name ] = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, 0, 1, 0 )   
-        mapping = target.object[ target.Name ].mapping = target.object[ target.name ]() // must call getter function explicitly
+        mapping = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, 0, 1, 0 )
+        
+        target.object[ target.propertyName ] = target.object[ target.Name ].mapping = mapping
         
         if( typeof from.object.track !== 'undefined' ) {
           mapping.follow = from.object.track
           mapping.follow.count++
         } else {
-          mapping.follow = new Gibberish.Follow({ input:from.object, useAbsoluteValue: true })
+          mapping.follow = new Gibber.Audio.Analysis.Follow({ input:from.object, useAbsoluteValue: true })
           mapping.follow.count = 1
         }
-        from.object.track = mapping.follow
         
-        mapping.input = target.object[ target.Name ].mapping.follow
+        from.object.track = mapping.input = mapping.follow
         
         mapping.remove = function( doNotSet ) {
           if( !doNotSet ) {
-            target.object[ target.name ] = target.object[ target.Name ].mapping.getValue()
+            target.object[ target.propertyName ] = target.object[ target.Name ].mapping.getValue()
           }
           
           if( mapping.bus )
@@ -166,31 +165,31 @@ module.exports = function( Gibber, Gibberish ) {
     graphics: {
       graphics: function( target, from ) {
         // rewrite getValue function of Map object to call Map callback and then return appropriate value
-        var map = Gibber.Audio.Core.Binops.Map( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
+        var map = Gibber.Audio.Core.Binops.Map( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
             old = map.getValue.bind( map ),
             mapping
         
         map.getValue = function() {
-          //console.log( from.name, from, target.min, target.max, from.min, from.max )
-          map.callback( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
+          //console.log( from.propertyName, from, target.min, target.max, from.min, from.max )
+          map.callback( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap )
           return old()
         }
         
         mapping = target.object[ target.Name ].mapping = map
         
         if( target.object.mod ) { // second case accomodates modding individual [0][1][2] properties fo vectors
-          target.object.mod( target.name, mapping, '=' )
+          target.object.mod( target.propertyName, mapping, '=' )
         }else{
           target.modObject.mod( target.modName, mapping, '=' )
         }
         
         mapping.remove = function() {
           if( target.object.mod ) {
-            target.object.removeMod( target.name )
+            target.object.removeMod( target.propertyName )
           }else{
             target.modObject.removeMod( target.modName )
           }
-          target.object[ target.name ] = target.object[ target.Name ].mapping.getValue()
+          target.object[ target.propertyName ] = target.object[ target.Name ].mapping.getValue()
           
           delete target.object[ target.Name ].mapping
         }
@@ -200,7 +199,7 @@ module.exports = function( Gibber, Gibberish ) {
         return mapping
       },
       interface: function( target, from ) {
-        // console.log( "FROM", from.name, target.min, target.max, from.min, from.max )
+        // console.log( "FROM", from.propertyName, target.min, target.max, from.min, from.max )
         var _map = Gibber.Audio.Core.Binops.Map( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
             mapping
             
@@ -217,7 +216,7 @@ module.exports = function( Gibber, Gibberish ) {
 
         target.mapping.from = from
         
-        var fcn_name = target.name + ' <- ' + from.object.name + '.' + from.Name
+        var fcn_name = target.propertyName + ' <- ' + from.object.propertyName + '.' + from.Name
 
         from.object.functions[ fcn_name ] = function() {
           var val = mapping.callback( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
@@ -226,8 +225,8 @@ module.exports = function( Gibber, Gibberish ) {
           target.object[ target.Name ].oldSetter.call( target.object[ target.Name ], val )
         }
         // from.object.onvaluechange = function() {          
-        //   var val = map.callback( this[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
-        //   target.object[ target.name ] = val
+        //   var val = map.callback( this[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap )
+        //   target.object[ target.propertyName ] = val
         // }
         mapping.replace = function() {
           // var old = from.functions[ target.Name ]
@@ -239,16 +238,16 @@ module.exports = function( Gibber, Gibberish ) {
         } 
         
         if( from.object.setValue ) 
-          from.object.setValue( target.object[ target.name ] )
+          from.object.setValue( target.object[ target.propertyName ] )
         
         // if( typeof from.object.label !== 'undefined' ) {
-        //   from.object.label = target.object.name + '.' + target.Name
+        //   from.object.label = target.object.propertyName + '.' + target.Name
         // }
         if( typeof from.object.label !== 'undefined' ) { 
           var labelString = ''
           for( var i = 0; i < from.targets.length; i++ ) {
             var __target = from.targets[ i ]
-            labelString += __target[0].object.name + '.' + __target[1]
+            labelString += __target[0].object.propertyName + '.' + __target[1]
             if( i !== from.targets.length - 1 ) labelString += ' & '
           }
           from.object.label = labelString
@@ -261,7 +260,8 @@ module.exports = function( Gibber, Gibberish ) {
         
         mapping = target.object[ target.Name ].mapping = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, from.min, from.max, target.output, from.wrap )
       
-        mapping.follow = typeof from.object.track !== 'undefined' ? from.object.track : new Gibberish.Follow({ input:from.object.properties[ from.name ], useAbsoluteValue: false })
+        mapping.follow = typeof from.object.track !== 'undefined' ? from.object.track : new Gibberish.Follow({ input:from.object[ from.propertyName ], useAbsoluteValue: false })
+        
         from.object.track = target.object[ target.Name ].mapping.follow
         // assign input after Map ugen is created so that follow can be assigned to the mapping object
         mapping.input = mapping.follow
@@ -283,7 +283,7 @@ module.exports = function( Gibber, Gibberish ) {
         
         if( target.object.mod ) { // second case accomodates modding individual [0][1][2] properties fo vectors
           //console.log( target.object, target.object.mod )
-          target.object.mod( target.name, mapping, '=' )
+          target.object.mod( target.propertyName, mapping, '=' )
         }else{
           target.modObject.mod( target.modName, mapping, '=' )
         }
@@ -300,7 +300,7 @@ module.exports = function( Gibber, Gibberish ) {
           }
 
           if( target.object.mod ) {
-            target.object.removeMod( target.name )
+            target.object.removeMod( target.propertyName )
           }else{
             target.modObject.removeMod( target.modName )
           }
@@ -311,9 +311,7 @@ module.exports = function( Gibber, Gibberish ) {
         return mapping
       },
       audioOut : function( target, from ) {
-        console.log( target.Name, target.object )
         if( typeof target.object[ target.Name ].mapping === 'undefined') {
-          console.log("MAKING A MAPPING")
           var mapping = target.object[ target.Name ].mapping = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, 0, 1, 0 )   
           if( typeof from.object.track !== 'undefined' ) {
             mapping.follow = from.object.track
@@ -356,23 +354,23 @@ module.exports = function( Gibber, Gibberish ) {
           }
         }else{
           console.log("REPLACING MAPPING")
-          mapping.replace( from.object, from.name, from.Name )
+          mapping.replace( from.object, from.propertyName, from.Name )
           return mapping
         }
         
-        if( target.object.mod ) { // second case accomodates modding individual [0][1][2] properties fo vectors
+        if( target.object.mod ) { // second case accomodates modding individual [0][1][2] properties of vectors
           //console.log( target.object, target.object.mod )
-          target.object.mod( target.name, mapping, '=' )
+          target.object.mod( target.propertyName, mapping, '=' )
         }else if (target.modObject) {
           target.modObject.mod( target.modName, mapping, '=' )
         }else{
           !function() {
             var _mapping = mapping
             target.object.update = function() { 
-              target.object[ target.name ]( _mapping.getValue() )
+              target.object[ target.propertyName ]( _mapping.getValue() )
             }
           }()
-          //target.object.mod( target.name, mapping, '=' ) 
+          //target.object.mod( target.propertyName, mapping, '=' ) 
         }
         
         //target.object[ target.Name ].mapping = mapping
@@ -389,12 +387,22 @@ module.exports = function( Gibber, Gibberish ) {
           }
 
           if( target.object.mod ) {
-            target.object.removeMod( target.name )
+            target.object.removeMod( target.propertyName )
           }else if( target.modObject ) {
             target.modObject.removeMod( target.modName )
           }else{
             console.log( 'removing update ')
             //target.object.update = function() {}
+          }
+          
+          target.object.mappings.splice( target.object.mappings.indexOf( mapping ), 1 )
+          from.object.mappings.splice( from.object.mappings.indexOf( mapping ), 1 ) 
+          
+          var targets = target.object[ target.Name ].targets,
+              idx = targets.indexOf( mappings )
+          
+          if( idx !== -1 ) {
+            targets.splice( idx, 1 )
           }
           
           delete target.object[ target.Name ].mapping
@@ -406,30 +414,30 @@ module.exports = function( Gibber, Gibberish ) {
       graphics: function( target, from ) {
         // rewrite getValue function of Map object to call Map callback and then return appropriate value
 
-        var map = Gibber.Audio.Core.Binops.Map( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
+        var map = Gibber.Audio.Core.Binops.Map( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
             old = map.getValue.bind( map ),
             mapping
         
         map.getValue = function() {
-          map.callback( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
+          map.callback( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap )
           return old()
         }
         
         mapping = target.object[ target.Name ].mapping = map
         
         if( target.object.mod ) { // second case accomodates modding individual [0][1][2] properties fo vectors
-          target.object.mod( target.name, mapping, '=' )
+          target.object.mod( target.propertyName, mapping, '=' )
         }else{
           target.modObject.mod( target.modName, mapping, '=' )
         }
         
         mapping.remove = function() {
           if( target.object.mod ) {
-            target.object.removeMod( target.name )
+            target.object.removeMod( target.propertyName )
           }else{
             target.modObject.removeMod( target.modName )
           }
-          target.object[ target.name ] = target.object[ target.Name ].mapping.getValue()
+          target.object[ target.propertyName ] = target.object[ target.Name ].mapping.getValue()
           
           delete target.object[ target.Name ].mapping
         }
@@ -439,8 +447,8 @@ module.exports = function( Gibber, Gibberish ) {
         return mapping
       },
       interface: function( target, from ) {
-        // console.log( "FROM", from.name, target.min, target.max, from.min, from.max )
-        var _map = Gibber.Audio.Core.Binops.Map( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
+        // console.log( "FROM", from.propertyName, target.min, target.max, from.min, from.max )
+        var _map = Gibber.Audio.Core.Binops.Map( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
             mapping
             
         if( typeof from.object.functions === 'undefined' ) {
@@ -456,17 +464,17 @@ module.exports = function( Gibber, Gibberish ) {
 
         target.mapping.from = from
         
-        var fcn_name = target.name + ' <- ' + from.object.name + '.' + from.Name
+        var fcn_name = target.propertyName + ' <- ' + from.object.propertyName + '.' + from.Name
 
         from.object.functions[ fcn_name ] = function() {
-          var val = mapping.callback( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
+          var val = mapping.callback( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap )
           // target.object[ target.Name ].value = val
           // console.log( target.Name )
           target.object[ target.Name ].oldSetter.call( target.object[ target.Name ], val )
         }
         // from.object.onvaluechange = function() {          
-        //   var val = map.callback( this[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
-        //   target.object[ target.name ] = val
+        //   var val = map.callback( this[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap )
+        //   target.object[ target.propertyName ] = val
         // }
         mapping.replace = function() {
           // var old = from.functions[ target.Name ]
@@ -478,16 +486,16 @@ module.exports = function( Gibber, Gibberish ) {
         } 
         
         if( from.object.setValue ) 
-          from.object.setValue( target.object[ target.name ] )
+          from.object.setValue( target.object[ target.propertyName ] )
         
         // if( typeof from.object.label !== 'undefined' ) {
-        //   from.object.label = target.object.name + '.' + target.Name
+        //   from.object.label = target.object.propertyName + '.' + target.Name
         // }
         if( typeof from.object.label !== 'undefined' ) { 
           var labelString = ''
           for( var i = 0; i < from.targets.length; i++ ) {
             var __target = from.targets[ i ]
-            labelString += __target[0].object.name + '.' + __target[1]
+            labelString += __target[0].object.propertyName + '.' + __target[1]
             if( i !== from.targets.length - 1 ) labelString += ' & '
           }
           from.object.label = labelString
@@ -500,11 +508,11 @@ module.exports = function( Gibber, Gibberish ) {
         
         mapping = target.object[ target.Name ].mapping = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, from.min, from.max, target.output, from.wrap )
   
-        if( typeof from.object.track !== 'undefined' && from.object.track.input === from.object.properties[ from.name ] ) {
+        if( typeof from.object.track !== 'undefined' && from.object.track.input === from.object.properties[ from.propertyName ] ) {
           mapping.follow = from.object.track
           mapping.follow.count++
         }else{
-          mapping.follow = new Gibberish.Follow({ input:from.object.properties[ from.name ], useAbsoluteValue: false })
+          mapping.follow = new Gibberish.Follow({ input:from.object.properties[ from.propertyName ], useAbsoluteValue: false })
           mapping.follow.count = 1
         }
         
@@ -529,7 +537,7 @@ module.exports = function( Gibber, Gibberish ) {
         })
         
         mapping.update = function() {   
-          target.object[ target.name ]( mapping.getValue() )
+          target.object[ target.propertyName ]( mapping.getValue() )
         }
         mapping.text = target.object
 
@@ -560,7 +568,7 @@ module.exports = function( Gibber, Gibberish ) {
           
           console.log( "MAPPING", from )
           
-          if( typeof from.object.track !== 'undefined' && from.object.track.input === from.object.properties[ from.name ] ) {
+          if( typeof from.object.track !== 'undefined' && from.object.track.input === from.object.properties[ from.propertyName ] ) {
             mapping.follow = from.object.track
             mapping.follow.count++
           }else{
@@ -601,12 +609,12 @@ module.exports = function( Gibber, Gibberish ) {
             
           }
         }else{
-          mapping.replace( from.object, from.name, from.Name )
+          mapping.replace( from.object, from.propertyName, from.Name )
           return mapping
         }
         
         mapping.update = function() {   
-          target.object[ target.name ]( mapping.getValue() )
+          target.object[ target.propertyName ]( mapping.getValue() )
         }
         mapping.text = target.object
 
@@ -636,7 +644,7 @@ module.exports = function( Gibber, Gibberish ) {
   return mappings
 }
 
-module.exports.outputCurves = {
+module.exports.outputCurves= {
   LINEAR:0,
   LOGARITHMIC:1
 }

@@ -153,6 +153,7 @@ for( var key in types) {
         this.material = new THREE.ShaderMaterial( arguments[0].shader.material || arguments[0].shader );
         if( arguments[0].shader.material ) arguments[0].shader.target = this
       }
+      
       this.geometry = Gibber.construct( THREE[ type + "Geometry" ], args )
       
       this.mesh = new THREE.Mesh( this.geometry, this.material )
@@ -163,159 +164,72 @@ for( var key in types) {
       this.mappingObjects = []
       
       var ltrs = { x:'X', y:'Y', z:'Z' }
-      for( var i = 0; i < vectors.length; i++ ) {
+      for( var i = 0; i < vectors.length; i++ ) { 
         
         (function( obj ) { // for each vector rotation, scale, position
-          var prop = vectors[ i ],
-              property = prop === 'scale' ? Vec3(1, 1, 1) : Vec3(),
+          var propertyName = vectors[ i ],
+              propertyObject = propertyName === 'scale' ? Vec3(1, 1, 1) : Vec3(),
               update = function() { 
-                //console.log( property.toArray() )
-                obj.mesh[ prop ].set( property.x(), property.y(), property.z() )
-                //obj.mesh[ prop ].set.apply( obj.mesh[ prop ], property.toArray() ) 
+                obj.mesh[ propertyName ].set( propertyObject.x, propertyObject.y, propertyObject.z )
               },
-              x = property.x, y = property.y, z = property.z
+              x = propertyObject.x, y = propertyObject.y, z = propertyObject.z
+
+          propertyObject.name = type + '.' + propertyName
+          propertyObject.seq  = obj.seq
           
-          Object.defineProperties( property, {
-            x: { get: function() { return x }, set: function(v) { x = v; update() }, configurable:true },
-            y: { get: function() { return y }, set: function(v) { y = v; update() }, configurable:true },
-            z: { get: function() { return z }, set: function(v) { z = v; update() }, configurable:true },
-          })
-          
-          property.name = type + '.' + prop
-          
-          for(var _ltr in ltrs) {
-            (function() {
-              var ltr = _ltr,
-                  Ltr = ltrs[ ltr ],
-                  propertyDict = mappingProperties[ prop ],
-                  propertyName = prop + ltr,
-                  mapping = $.extend( {}, propertyDict, {
-                    Name  : Ltr,
-                    name  : ltr,
-                    modName : prop + '.' + ltr,
-                    type  : 'mapping',
-                    value : property[ ltr ],
-                    object: property,
-                    modObject: obj,
-                    targets:[],
-                    oldSetter: property.__lookupSetter__( ltr ),
-                    oldGetter: property.__lookupGetter__( ltr ),            
-                    set : function( val )  { property[ ltr ] = val },
-                  }),
-                  fnc
-              
-              mapping.object = property
-              
-              fnc = obj[ '_' + propertyName ] = function(v) {
-                if( typeof v !== 'undefined' ) {
-                  mapping.value = v
-                  mapping.oldSetter( mapping.value ) 
-                }
-                  
-                return mapping.value
-              }
-    
-              fnc.set = function(v) { 
-                mapping.value = v; 
-                mapping.oldSetter( mapping.value ) 
-              }
-    
-              fnc.valueOf = function() { return mapping.value }
-              
-              Object.defineProperty( property, Ltr, {
-                get: function()  { return mapping },
-                set: function(v) { 
-                  property[ Ltr ] = v 
-                }
-              })
-              
-              Object.defineProperty( property, ltr, {
-                get: function() { return obj[ '_' + propertyName ] },
-                set: function(v) {
-                  if( typeof v === 'object' && v.type === 'mapping' ) {
-                    Gibber.createMappingObject( mapping, v )
-                  }else{
-                    if( mapping.mapping ) mapping.mapping.remove()
-                    obj[ '_' + propertyName ]( v )
-                  }
-                }
-              })
-              
-              Gibber.defineSequencedProperty( obj, '_' + propertyName )
-              Gibber.defineRampedProperty( obj, '_' + propertyName )
-            })()
-          }
-                    
-          var propertyDict = mappingProperties[ prop ], 
-              mapping
-              
-          mapping = $.extend( {}, propertyDict, {
-            Name  : prop.charAt(0).toUpperCase() + prop.slice(1),
-            name  : prop,
-            type  : 'mapping',
-            value : property,
-            object: obj,
-            targets:[],
-            oldSetter : function(v) {
+          Object.defineProperty( obj, propertyName, {
+            configurable:true,
+            get: function() { return propertyObject },
+            set: function( v ) {
               switch( $.type( v ) ) {
                 case 'object' :
-                  if(typeof v.x === 'number') property.x = v.x
-                  if(typeof v.y === 'number') property.y = v.y
-                  if(typeof v.z === 'number') property.z = v.z
+                  if(typeof v.x === 'number') propertyObject.x = v.x
+                  if(typeof v.y === 'number') propertyObject.y = v.y
+                  if(typeof v.z === 'number') propertyObject.z = v.z
                 break;
                 case 'array' :
-                  if(typeof v[0] === 'number') property.x = v[ 0 ]
-                  if(typeof v[1] === 'number') property.y = v[ 1 ]
-                  if(typeof v[2] === 'number') property.z = v[ 2 ]
+                  if(typeof v[0] === 'number') propertyObject.x = v[ 0 ]
+                  if(typeof v[1] === 'number') propertyObject.y = v[ 1 ]
+                  if(typeof v[2] === 'number') propertyObject.z = v[ 2 ]
                   break;
                 case 'number' :
-                  x = y = z = v
+                  propertyObject.x = propertyObject.y = propertyObject.z = v
                   break;
               }
               update()
+              
+              return propertyObject
             }
+          })
+          
+          //obj[ propertyName ] = propertyObject
+          
+          Gibber.defineProperty( obj, propertyName, true, true, mappingProperties[ propertyName ], true, false, true )
+
+          Object.defineProperties( obj[ propertyName ], {
+            x: { get: function() { return propertyObject.x }, set: function(v) { propertyObject.x = v; update() }, configurable:true },
+            y: { get: function() { return propertyObject.y }, set: function(v) { propertyObject.y = v; update() }, configurable:true },
+            z: { get: function() { return propertyObject.z }, set: function(v) { propertyObject.z = v; update() }, configurable:true },
           })
 
-          Object.defineProperty( obj, prop, {
-            get: function() { return property },
-            set: function(v) {
-              if( mapping.mapping ) mapping.mapping.remove()
-              switch( $.type( v ) ) {
-                case 'object' :
-                  if( v.type === 'mapping' ) {
-                    Gibber.createMappingObject( mapping, v )
-                  }else{
-                    if(typeof v.x === 'number') property.x = v.x
-                    if(typeof v.y === 'number') property.y = v.y
-                    if(typeof v.z === 'number') property.z = v.z
-                  }
-                  break;
-                case 'array' :
-                  if(typeof v[0] === 'number') property.x = v[ 0 ]
-                  if(typeof v[1] === 'number') property.y = v[ 1 ]
-                  if(typeof v[2] === 'number') property.z = v[ 2 ]
-                  break;
-                case 'number' :                  
-                  property.x = property.y = property.z = v
-                  break;
-              }
-              update()
-            },            
-          })
-                    
-          Object.defineProperty( obj, mapping.Name, {
-            get: function() { return mapping },
-            set: function(v) {
-              if( typeof v === 'object' && v.type === 'mapping' ) {
-                Gibber.createMappingObject( mapping, v )
-              }
-            }
-          })
-          
-          property.mappings = []
-          Gibber.defineSequencedProperty( obj, prop )
-          Gibber.defineRampedProperty( obj, prop )
-          
+          for(var _ltr in ltrs) {
+            !function() {
+              var l = _ltr
+              
+              Gibber.defineProperty( obj[ propertyName ], _ltr, true, true, mappingProperties[ propertyName ], true )
+              // Gibber.defineProperty( propertyObject, _ltr, true, true, mappingProperties[ propertyName ], true )
+            
+              obj[ propertyName ][ l ].modObject = obj
+              obj[ propertyName ][ l ].modName = propertyName + '.' + l
+              // propertyObject[ l ].modObject = obj
+              // propertyObject[ l ].modName = propertyName + '.' + l
+              
+              
+              // avoid removing multimodal mapping by directly changing property object value
+              obj[ propertyName ][ l ].set = function( v ) { propertyObject[ l ] = v; update() }
+              // propertyObject[ l ].set = function( v ) { propertyObject[ l ] = v; update() }
+            }()
+          }
         })( this )
         
       }
@@ -495,9 +409,8 @@ for( var key in types) {
           if( $.isArray( v ) ) {
             v = Color().rgb( v[0] * 255, v[1] * 255, v[2] * 255 ).hexString()
           }
-          console.log( "COLOR", v )
-          this.material.color.set( v )
-          
+
+          this.material.color.set( v )          
         }
       })
       

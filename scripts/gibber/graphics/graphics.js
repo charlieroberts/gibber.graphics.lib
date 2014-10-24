@@ -34,7 +34,7 @@ Graphics = {
     if( typeof _container === 'undefined' || _container === null ) {
       container = document.querySelector( Graphics.defaultContainer )
     }else{
-      container = _container.element
+      container = _container.bodyElement
     }
     
     return container
@@ -58,7 +58,7 @@ Graphics = {
       // }
     }
     
-    if( this.modes[ this.mode ].obj.init ) { this.modes[ this.mode ].obj.init() }
+    if( this.modes[ this.mode ].obj.init ) { this.modes[ this.mode ].obj.init( container ) }
     
     if( this.modes[ this.mode ].canvas !== null ) {
       this.canvas = this.modes[ this.mode ].canvas
@@ -69,11 +69,11 @@ Graphics = {
     if( typeof container === 'undefined' || container === null ) {
       this.canvas.parent = document.querySelector( Graphics.defaultContainer )
     }else{
-      this.canvas.parent = container.element
+      this.canvas.parent = container.bodyElement || container
       //container.element.find( '.editor' ).remove()
     }
     
-    this.sizeCanvas( this.canvas )
+    this.positionCanvas( this.canvas )
     this.assignWidthAndHeight( true )
     
     this.modes[ this.mode ].obj.setSize( this.width * this.resolution, this.height * this.resolution )
@@ -122,15 +122,15 @@ Graphics = {
     this.initialized = true   
   },
   
-  sizeCanvas: function( canvas ) {
+  positionCanvas: function( canvas ) {
     var body = document.querySelector( 'body' ),
         appendedToBody = canvas.parent === body
-        
+    
     canvas.style.left = 0
-    canvas.style.top = appendedToBody ? 0 : 32
-    canvas.style.position = 'fixed'
+    canvas.style.top = appendedToBody ? 32 : 0
+    canvas.style.position = appendedToBody ? 'fixed' : 'relative'
     //canvas.style.position = canvas.parent === document ? 'fixed' : 'relative'
-    canvas.style.float    = canvas.parent === document ? 'none' : 'left'
+    canvas.style.float    = appendedToBody ? 'none' : 'left'
     canvas.style.overflow = 'hidden'
     canvas.style.display  = 'block'
     
@@ -233,12 +233,11 @@ Graphics = {
 	},
   
   assignWidthAndHeight : function( isInitialSetting ) { // don't run final lines before renderer is setup...
-    Graphics.width  = Graphics.canvas.parent === window ? window.innerWidth  : (Graphics.canvas.parent.offsetWidth || Graphics.canvas.parent.width() ) //$( this.canvas.parent ).width() // either column or window... 
-    Graphics.height = Graphics.canvas.parent === window ? window.innerHeight : (Graphics.canvas.parent.offsetHeight || document.querySelector('.column').offsetHeight )//$( window ).height()
+    Graphics.width  = Graphics.canvas.parent === window ? window.innerWidth  : (Graphics.canvas.parent.offsetWidth || Graphics.canvas.parent.width() ) 
+    Graphics.height = Graphics.canvas.parent === window ? window.innerHeight : (Graphics.canvas.parent.offsetHeight || Graphics.canvas.parent[0].offsetHeight )
     
     if( document.querySelector( '#header' ) !== null && Graphics.canvas.parent === window ) {
       if( Gibber.Environment.Layout.fullScreenColumn === null) { 
-        //Graphics.height -= $( "#header" ).height() + $( "tfoot" ).height()
       }
     }
     
