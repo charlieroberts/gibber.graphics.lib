@@ -6,11 +6,15 @@ var browserify = require( 'gulp-browserify' ),
     insert = require( 'gulp-insert' );
 
 gulp.task( 'client', function(){
-    var out = gulp.src( [ './scripts/gibber/gibber.js' ] )
+    var out = gulp.src( [ './scripts/gibber/graphics.lib.js' ] )
     .pipe( browserify({ 
       standalone:'Gibber', 
       bare:true, 
-      ignore:['./audio' ], 
+      ignore:[
+        'gibber.graphics.lib/scripts/gibber/graphics/graphics',
+        'gibber.interface.lib/scripts/gibber/interface/interface',
+        'gibber.audio.lib/scripts/gibber/audio'
+      ],
       noParse:[ require.resolve( './scripts/external/three/three.min.js' ) ] 
     }) )
     .pipe( rename('gibber.graphics.lib.js') )
