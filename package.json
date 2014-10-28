@@ -16,7 +16,7 @@
     "gulp-browserify": "~0.5.0",
     "gulp-rename": "~1.2.0",
     "color": "~0.7.1",
-    "gibber.core.lib" :"~0.0.0",
+    "gibber.core.lib" :"~0.0.1"
   },
   "bugs": {
     "url": "https://github.com/charlieroberts/gibber.lib/issues"

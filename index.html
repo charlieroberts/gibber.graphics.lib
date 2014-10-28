@@ -4,7 +4,7 @@
   <script src='./build/gibber.graphics.lib.js'></script>
 </head>
 
-<style>body { margin:0 ; }</style>
+<style> body { margin:0; } </style>
 
 <body></body>
 
@@ -12,10 +12,9 @@
 
   Gibber.init({ graphicsMode:'3d' })
   
-  a = Cube().spin(.0005)
-  a.scale = 2
+  knot = Knot({ scale:2 }).spin(.0005)
   
-  b = Film()
+  focus = Focus({ waveFactor:.1, sampleDistance:.5 })
     
 </script>
 

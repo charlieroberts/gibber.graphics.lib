@@ -2092,7 +2092,7 @@ var Gibber = {
       },
       set: function( v ){
         if( (typeof v === 'function' || typeof v === 'object' && v.type === 'mapping') && ( v.type === 'property' || v.type === 'mapping' ) ) {
-          //console.log( "CREATING MAPPING", property )
+          console.log( "CREATING MAPPING", property )
           Gibber.createMappingObject( property, v )
         }else{
           if( shouldUseMappings && obj[ property.Name ] ) {
@@ -5832,16 +5832,16 @@ module.exports = function( Gibber, Graphics ) {
       running: false,
       init : function() {
         this.container = Graphics.getContainer( container )
-      
+        
         if( this.initialized ) this.setSize( Graphics.width, Graphics.height )
         this.createRenderer()
         this.createScene()
         this.createLights()        
-      
+        
         if( !Graphics.running ) {
           Graphics.start()
         }
-      
+        
         this.show()
         this.initialized = true
         this.running = true
@@ -5952,7 +5952,6 @@ module.exports = function( Gibber, Graphics ) {
         for( var i = 0; i < this.scene.children.length; i++ ) {
           this.scene.remove( this.scene.children[ i ] )
         }
-        this.initialized = false
       },
       show: function() { that.canvas.style.display = 'block' },
       hide: function() { that.canvas.style.display = 'none'  },
@@ -6635,11 +6634,11 @@ return Shaders
 
 }
 },{}],30:[function(_dereq_,module,exports){
-!function() {
+module.exports = function( Gibber ) {
 
 "use strict"
 
-var $,
+var $ = Gibber.dollar,
 
 Graphics = {
   Color: _dereq_( 'color' ),
@@ -6898,51 +6897,47 @@ Graphics = {
 }
 
 Graphics.render = Graphics.render.bind( Graphics )
-
-module.exports = function( Gibber ) {
-  $ = Gibber.dollar
   
-  Graphics.modes = {
-    '2d':{
-      constructor: _dereq_( './2d' )( Gibber, Graphics ),
-      canvas: null,
-      obj: null,
-    },
-    '3d':{
-      constructor: _dereq_( './3d' )( Gibber, Graphics ),
-      canvas: null,
-      obj: null
-    }
+Graphics.modes = {
+  '2d':{
+    constructor: _dereq_( './2d' )( Gibber, Graphics ),
+    canvas: null,
+    obj: null,
+  },
+  '3d':{
+    constructor: _dereq_( './3d' )( Gibber, Graphics ),
+    canvas: null,
+    obj: null
   }
-    
-  Graphics.Geometry = _dereq_( './geometry' )( Gibber, Graphics, Graphics.THREE )
-  
-  _dereq_( '../external/three/postprocessing/EffectComposer' )
-  _dereq_( '../external/three/postprocessing/RenderPass' )
-  _dereq_( '../external/three/postprocessing/MaskPass' )
-  _dereq_( '../external/three/postprocessing/ShaderPass' )
-  _dereq_( '../external/three/postprocessing/CopyShader' )
-  _dereq_( '../external/three/postprocessing/shaders/DotScreenShader' )
-  _dereq_( '../external/three/postprocessing/DotScreenPass' )
-  _dereq_( '../external/three/postprocessing/FilmPass' )
-  _dereq_( '../external/three/postprocessing/shaders/FilmShader' )
-  _dereq_( '../external/three/postprocessing/shaders/KaleidoShader' )
-  _dereq_( '../external/three/postprocessing/shaders/EdgeShader' )
-  _dereq_( '../external/three/postprocessing/shaders/FocusShader' )
-  _dereq_( '../external/three/postprocessing/shaders/ShaderGodRays' )
-  _dereq_( '../external/three/postprocessing/shaders/BleachBypassShader' )
-  _dereq_( '../external/three/postprocessing/shaders/ColorifyShader' )
-  
-  Graphics.PostProcessing = _dereq_( './postprocessing' )( Gibber, Graphics )
-  Graphics.PostProcessing.init()
-  Graphics.Shaders = _dereq_( './shader' )( Gibber, Graphics )
-  Graphics.GibberShaders = _dereq_( './gibber_shaders' )( Gibber, Graphics )
-  Graphics.Video = _dereq_( './video' )( Gibber, Graphics )
-    
-  return Graphics; 
 }
+  
+Graphics.Geometry = _dereq_( './geometry' )( Gibber, Graphics, Graphics.THREE )
 
-}()
+_dereq_( '../external/three/postprocessing/EffectComposer' )
+_dereq_( '../external/three/postprocessing/RenderPass' )
+_dereq_( '../external/three/postprocessing/MaskPass' )
+_dereq_( '../external/three/postprocessing/ShaderPass' )
+_dereq_( '../external/three/postprocessing/CopyShader' )
+_dereq_( '../external/three/postprocessing/shaders/DotScreenShader' )
+_dereq_( '../external/three/postprocessing/DotScreenPass' )
+_dereq_( '../external/three/postprocessing/FilmPass' )
+_dereq_( '../external/three/postprocessing/shaders/FilmShader' )
+_dereq_( '../external/three/postprocessing/shaders/KaleidoShader' )
+_dereq_( '../external/three/postprocessing/shaders/EdgeShader' )
+_dereq_( '../external/three/postprocessing/shaders/FocusShader' )
+_dereq_( '../external/three/postprocessing/shaders/ShaderGodRays' )
+_dereq_( '../external/three/postprocessing/shaders/BleachBypassShader' )
+_dereq_( '../external/three/postprocessing/shaders/ColorifyShader' )
+
+Graphics.PostProcessing = _dereq_( './postprocessing' )( Gibber, Graphics )
+Graphics.PostProcessing.init()
+Graphics.Shaders = _dereq_( './shader' )( Gibber, Graphics )
+Graphics.GibberShaders = _dereq_( './gibber_shaders' )( Gibber, Graphics )
+Graphics.Video = _dereq_( './video' )( Gibber, Graphics )
+  
+return Graphics; 
+
+}
 },{"../external/three/postprocessing/CopyShader":9,"../external/three/postprocessing/DotScreenPass":10,"../external/three/postprocessing/EffectComposer":11,"../external/three/postprocessing/FilmPass":12,"../external/three/postprocessing/MaskPass":13,"../external/three/postprocessing/RenderPass":14,"../external/three/postprocessing/ShaderPass":15,"../external/three/postprocessing/shaders/BleachBypassShader":16,"../external/three/postprocessing/shaders/ColorifyShader":17,"../external/three/postprocessing/shaders/DotScreenShader":18,"../external/three/postprocessing/shaders/EdgeShader":19,"../external/three/postprocessing/shaders/FilmShader":20,"../external/three/postprocessing/shaders/FocusShader":21,"../external/three/postprocessing/shaders/KaleidoShader":22,"../external/three/postprocessing/shaders/ShaderGodRays":23,"../external/three/three.min":24,"./2d":25,"./3d":26,"./geometry":28,"./gibber_shaders":29,"./postprocessing":31,"./shader":32,"./video":33,"color":1}],31:[function(_dereq_,module,exports){
 module.exports = function( Gibber, Graphics ) {
 
