@@ -53,9 +53,7 @@ module.exports = function( Gibber, Graphics ) {
       _shader.fragmentShader = Graphics.PostProcessing.defs + _shader.fragmentShader
 	    
       if( !Gibber.Graphics.running ) {
-        console.log( "GRAPHICS INIT")
         Gibber.Graphics.init( '3d' )
-        console.log( "MODE", Gibber.Graphics.mode )
       }else{
         if( Gibber.Graphics.mode === '2d' ) {
           Gibber.Graphics.use( '3d' )

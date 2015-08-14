@@ -42,6 +42,31 @@ var types = [
   }
 })
 
+Vec2.random = function( min, max ) {
+	if( typeof min === 'undefined' ) min = 0
+	if( typeof max === 'undefined' ) max = min + 1
+  return Vec2( rndf(min,max), rndf(min,max) )
+}
+
+Vec2.div = function( _vec, scalar ) {
+  var vec = _vec.clone()
+  vec.divideScalar( scalar )
+  return vec
+}
+
+Vec2.sub = function( a, b ) {
+  var vec = a.clone()
+  vec.sub( b )
+  return vec
+}
+
+THREE.Vector2.prototype.limit = function( limit ) {
+	if( this.length() > limit ) {
+    this.normalize()
+    this.multiplyScalar( limit )
+  }
+}
+
 var types = {
       Cube:  { width:50, height:50, depth:50 },
       Sphere: { radius:50, segments:16, rings: 16 },

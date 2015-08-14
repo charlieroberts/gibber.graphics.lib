@@ -23,6 +23,11 @@ module.exports = function( Gibber, Graphics ) {
         }
       }
     },
+    hide: function() {
+      if( this.canvas ) {
+        this.canvasObject.hide()
+      }
+    },
     remove: function() {
       if( this.canvasObject ) {
         this.canvasObject.remove()
@@ -118,7 +123,7 @@ module.exports = function( Gibber, Graphics ) {
           
         },
 
-        canvas: canvas,
+        //canvas: canvas,
         is3D: Graphics.mode === '3d',
         texture:  { needsUpdate: function() {} },//tex || { needsUpdate: function() {} }, 
         remove : function() {
@@ -475,7 +480,8 @@ module.exports = function( Gibber, Graphics ) {
         //   Graphics.graph.push( that )
         // }
       })
-
+       
+      //that.canvas = canvas
       cnvs = that
 
       Object.defineProperties( that, {

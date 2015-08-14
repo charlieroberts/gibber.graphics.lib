@@ -17,6 +17,7 @@ Graphics = {
   fps: null,
   graph: [],
   initialized: false,
+  mode: null,
   defaultContainer: '#contentCell',
   THREE: require('../external/three/three.min'),
   
@@ -42,22 +43,26 @@ Graphics = {
   
   init : function( mode, container ) { 
     if( mode === '3d' && !window.WebGLRenderingContext ) {
-      var msg = 'Your browser does not support WebGL.' + 
-                '2D drawing will work, but 3D geometries and shaders are not supported.'
+      var msg = 'Your browser does not support WebGL. 2D drawing will work, but 3D geometries and shaders are not supported.'
         
       Gibber.Environment.Message.post( msg )
     }
     
+    var _mode = this.mode
+    
     this.mode = mode || '3d'
 
     if( this.modes[ this.mode ].canvas === null ) {
-                                    //Graphics.modes['2d'].constructor()
       this.modes[ this.mode ].obj = this.modes[ this.mode ].constructor( container )
       // if( this.mode === '2d' ) {
       //   this.modes[ '2d' ].canvas = this.modes[ this.mode ].obj
       // }
     }
     
+    // console.log( "_MODE", _mode )
+    if( _mode !== null && typeof _mode !== 'undefined' && _mode !== this.mode ) {
+      this.modes[ _mode ].obj.hide()
+    } 
     if( this.modes[ this.mode ].obj.init ) { this.modes[ this.mode ].obj.init( container ) }
     
     if( this.modes[ this.mode ].canvas !== null ) {
@@ -101,6 +106,13 @@ Graphics = {
     });
     
     this.start()
+    
+    if( $( this.canvas ).css( 'display' ) === 'none' ) {
+      console.log( 'toggling!' )
+      $( this.canvas ).css( 'display', 'block' )
+    }else{
+      console.log( "not hidden", $( this.canvas ).css( 'display') )
+    }
 
     var resize = function( props ) { // I hate Safari on 10.6 for not having bind...
       Graphics.width = props.w
@@ -193,6 +205,7 @@ Graphics = {
       //this.ctx = null
       this.running = false
       //this.initialized = false
+      //this.mode = null
     }
   },
   render : function() {
@@ -239,7 +252,7 @@ Graphics = {
     Graphics.width  = parent === document.querySelector('body') ? parent.offsetWidth  : (parent.offsetWidth || parent.width() ) 
     
     // TODO: sheesh
-    Graphics.height = parent === document.querySelector('body') ? parent.offsetHeight : (parent.offsetHeight || parent[0] ? parent[0].offsetHeight : $( $('#contentCell').children()[0] ).height() )
+    Graphics.height = parent === document.querySelector('body') ? parent.offsetHeight : ( $( $('#contentCell').children()[0] ).height() || parent.offsetHeight )
     
     if( document.querySelector( '#header' ) !== null && parent === window ) {
       if( Gibber.Environment.Layout.fullScreenColumn === null) { 

@@ -282,8 +282,10 @@ var PP = {
             Gibber.Graphics.init( '3d' )
           }else if( Gibber.Graphics.mode === '2d' ) {
             Gibber.Graphics.useCanvasAsTexture( Gibber.Graphics.modes['2d'].obj.canvasObject )
+          }else if( $( Gibber.Graphics.canvas ).css( 'display' ) === 'none' ) {
+            $( Gibber.Graphics.canvas ).css( 'display', 'block' )
           }
-          
+                    
           Gibber.Graphics.running = true 
           
 					if( name !== 'Shader' ) {
@@ -528,36 +530,36 @@ var PP = {
   },
 }
 
-var types = [
-  [ 'Vec2', 'Vector2', 'vec2' ],
-  [ 'Vec3', 'Vector3', 'vec3' ],
-  [ 'Vec4', 'Vector4', 'vec4' ],    
-]
-.forEach( function( element, index, array ) {
-  var type = element[ 0 ],
-    threeType = element[ 1 ] || element[ 0 ],
-    shaderType = element[ 2 ] || 'f'
-    
-  window[ type ] = function() {
-    var args = Array.prototype.slice.call( arguments, 0 ),
-        obj
-    
-    if( Array.isArray( args[0] ) ) {
-      var _args = []
-      for( var i = 0; i < args[0].length; i++ ) {
-        _args[ i ] = args[0][ i ]
-      }
-      args = _args
-    }    
-        
-    obj = Gibber.construct( THREE[ threeType ], args )
-    
-    obj.name = type
-    obj.shaderType = shaderType
-    
-    return obj
-  }
-})
+// var types = [
+//   [ 'Vec2', 'Vector2', 'vec2' ],
+//   [ 'Vec3', 'Vector3', 'vec3' ],
+//   [ 'Vec4', 'Vector4', 'vec4' ],    
+// ]
+// .forEach( function( element, index, array ) {
+//   var type = element[ 0 ],
+//     threeType = element[ 1 ] || element[ 0 ],
+//     shaderType = element[ 2 ] || 'f'
+//     
+//   window[ type ] = function() {
+//     var args = Array.prototype.slice.call( arguments, 0 ),
+//         obj
+//     
+//     if( Array.isArray( args[0] ) ) {
+//       var _args = []
+//       for( var i = 0; i < args[0].length; i++ ) {
+//         _args[ i ] = args[0][ i ]
+//       }
+//       args = _args
+//     }    
+//         
+//     obj = Gibber.construct( THREE[ threeType ], args )
+//     
+//     obj.name = type
+//     obj.shaderType = shaderType
+//     
+//     return obj
+//   }
+// })
 
 var threeTypes = {
   'vec2' : 'v2',

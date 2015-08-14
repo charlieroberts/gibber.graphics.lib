@@ -1,7 +1,16 @@
-!function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Gibber=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+!function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Gibber=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"./scripts/gibber/graphics.lib.js":[function(require,module,exports){
+!function() {
+
+var Gibber = require( 'gibber.core.lib' )
+Gibber.Graphics = require( './graphics.js')( Gibber )
+
+module.exports = Gibber
+
+}()
+},{"./graphics.js":"/www/gibber.graphics.lib/scripts/gibber/graphics.js","gibber.core.lib":"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/gibber.js"}],"/www/gibber.graphics.lib/node_modules/color/color.js":[function(require,module,exports){
 /* MIT license */
-var convert = _dereq_("color-convert"),
-    string = _dereq_("color-string");
+var convert = require("color-convert"),
+    string = require("color-string");
 
 module.exports = function(cssString) {
    return new Color(cssString);
@@ -428,7 +437,7 @@ Color.prototype.setChannel = function(space, index, val) {
    return this;
 }
 
-},{"color-convert":3,"color-string":4}],2:[function(_dereq_,module,exports){
+},{"color-convert":"/www/gibber.graphics.lib/node_modules/color/node_modules/color-convert/index.js","color-string":"/www/gibber.graphics.lib/node_modules/color/node_modules/color-string/color-string.js"}],"/www/gibber.graphics.lib/node_modules/color/node_modules/color-convert/conversions.js":[function(require,module,exports){
 /* MIT license */
 
 module.exports = {
@@ -1120,8 +1129,8 @@ for (var key in cssKeywords) {
   reverseKeywords[JSON.stringify(cssKeywords[key])] = key;
 }
 
-},{}],3:[function(_dereq_,module,exports){
-var conversions = _dereq_("./conversions");
+},{}],"/www/gibber.graphics.lib/node_modules/color/node_modules/color-convert/index.js":[function(require,module,exports){
+var conversions = require("./conversions");
 
 var convert = function() {
    return new Converter();
@@ -1213,9 +1222,9 @@ Converter.prototype.getValues = function(space) {
 });
 
 module.exports = convert;
-},{"./conversions":2}],4:[function(_dereq_,module,exports){
+},{"./conversions":"/www/gibber.graphics.lib/node_modules/color/node_modules/color-convert/conversions.js"}],"/www/gibber.graphics.lib/node_modules/color/node_modules/color-string/color-string.js":[function(require,module,exports){
 /* MIT license */
-var convert = _dereq_("color-convert");
+var convert = require("color-convert");
 
 module.exports = {
    getRgba: getRgba,
@@ -1427,7 +1436,7 @@ function hexDouble(num) {
   return (str.length < 2) ? "0" + str : str;
 }
 
-},{"color-convert":3}],5:[function(_dereq_,module,exports){
+},{"color-convert":"/www/gibber.graphics.lib/node_modules/color/node_modules/color-convert/index.js"}],"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/dollar.js":[function(require,module,exports){
 (function (global){
 !function() {
 
@@ -1519,19 +1528,197 @@ $.publish = function( key, data ) {
 module.exports = $
 
 }()
-}).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],6:[function(_dereq_,module,exports){
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/euclidean.js":[function(require,module,exports){
+module.exports = function( Gibber ) {
+
+"use strict"
+
+var flatten = function(){
+   var flat = [];
+   for (var i = 0, l = this.length; i < l; i++){
+       var type = Object.prototype.toString.call(this[i]).split(' ').pop().split(']').shift().toLowerCase();
+       if (type) { flat = flat.concat(/^(array|collection|arguments|object)$/.test(type) ? flatten.call(this[i]) : this[i]); }
+   }
+   return flat;
+}
+
+var createStartingArray = function( length, ones ) {
+  var out = []
+  for( var i = 0; i < ones; i++ ) {
+    out.push([1])
+  }
+  for( var j = i; j < length; j++ ) {
+    out.push(0)
+  }
+  return out
+}
+
+var printArray = function( array ) {
+  var str = ''
+  for( var i = 0; i < array.length; i++ ) {
+    var outerElement = array[ i ]
+    if( Array.isArray( outerElement ) ) {
+      str += '['
+      for( var j = 0; j < outerElement.length; j++ ) {
+        str += outerElement[ j ]
+      }
+      str += '] '
+    }else{
+      str += outerElement + ''
+    }
+  }
+
+  return str
+}
+
+var arraysEqual = function(a, b) {
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  if (a.length != b.length) return false;
+
+  for (var i = 0; i < a.length; ++i) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+var getLargestArrayCount = function( input ) {
+  var length = 0, count = 0
+
+  for( var i = 0; i < input.length; i++ ) {
+    if( Array.isArray( input[ i ] ) ) { 
+      if( input[ i ].length > length ) {
+        length = input[ i ].length
+        count = 1
+      }else if( input[ i ].length === length ) {
+        count++
+      }
+    }
+  }
+
+  return count
+}
+
+var Euclid = function( ones,length, dur ) {
+  var count = 0,
+      out = createStartingArray( length, ones )
+
+ 	function Inner( n,k ) {
+    var operationCount = count++ === 0 ? k : getLargestArrayCount( out ),
+        moveCandidateCount = out.length - operationCount,
+        numberOfMoves = operationCount >= moveCandidateCount ? moveCandidateCount : operationCount
+
+    if( numberOfMoves > 1 || count === 1 ) {
+      for( var i = 0; i < numberOfMoves; i++ ) {
+        var willBeMoved = out.pop(), isArray = Array.isArray( willBeMoved )
+        out[ i ].push( willBeMoved )
+        if( isArray ) { 
+          flatten.call( out[ i ] )
+        }
+      }
+    }
+
+    if( n % k !== 0 ) {
+      return Inner( k, n % k )
+    }else {
+      return flatten.call( out )
+    }
+  }
+
+  return calculateRhythms( Inner( length, ones ), dur )
+}
+// E(5,8) = [ .25, .125, .25, .125, .25 ]
+var calculateRhythms = function( values,dur ) {
+  var out = []
+  
+  console.log( values, dur )
+  if( typeof dur === 'undefined' ) dur = 1 / values.length
+
+  var idx = 0,
+      currentDur = 0
+  
+  while( idx < values.length ) {
+    idx++
+    currentDur += dur
+    
+    if( values[ idx ] == 1 || idx === values.length ) {
+      out.push( currentDur )
+      currentDur = 0
+    } 
+  }
+  
+  return out
+}
+
+var answers = {
+  '1,4' : '1000',
+  '2,3' : '101',
+  '2,5' : '10100',
+  '3,4' : '1011',
+  '3,5' : '10101',
+  '3,7' : '1010100',
+  '3,8' : '10010010',
+  '4,7' : '1010101',
+  '4,9' : '101010100',
+  '4,11': '10010010010',
+  '5,6' : '101111',
+  '5,7' : '1011011',
+  '5,8' : '10110110',
+  '5,9' : '101010101',
+  '5,11': '10101010100',
+  '5,12': '100101001010',
+  '5,16': '1001001001001000',
+  '7,8' : '10111111',
+  '11,24': '100101010101001010101010'
+}
+
+Euclid.test = function( testKey ) {
+  var failed = 0, passed = 0
+
+  if( typeof testKey !== 'string' ) {
+    for( var key in answers ) {
+      var expectedResult = answers[ key ],
+          result = flatten.call( Euclid.apply( null, key.split(',') ) ).join('')
+
+      console.log( result, expectedResult )
+
+      if( result === expectedResult ) {
+        console.log("TEST PASSED", key )
+        passed++
+      }else{
+        console.log("TEST FAILED", key )
+        failed++
+      }
+    }
+    console.log("*****************************TEST RESULTS - Passed: " + passed + ", Failed: " + failed )
+  }else{
+    var expectedResult = answers[testKey],
+				result = flatten.call( Euclid.apply( null, testKey.split(',') ) ).join('')
+
+    console.log( result, expectedResult )
+
+    if( result == expectedResult ) {
+      console.log("TEST PASSED FOR", testKey)
+    }else{
+      console.log("TEST FAILED FOR", testKey)
+    }
+  }
+}
+
+return Euclid
+
+}
+},{}],"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/gibber.js":[function(require,module,exports){
 (function() {
 //"use strict" 
 // can't use strict because eval is used to evaluate user code in the run method
 // I should wrap this in a Function call instead...
-var $ = _dereq_( './dollar' )
+var $ = require( './dollar' )
 
 var Gibber = {
   dollar: $,
   Presets: {},
-  GraphicsLib: {},
-  Binops: {},
   scale : null,
   minNoteFrequency:50,
   started:false,
@@ -1539,9 +1726,13 @@ var Gibber = {
     LINEAR:0,
     LOGARITHMIC:1
   },
+  Pattern: require( './pattern' ),
   
   export: function( target ) {
     Gibber.Utilities.export( target )
+    target.Pattern = Gibber.Pattern 
+    target.Score = Gibber.Score
+    target.Euclid = Gibber.Euclid
     
     if( Gibber.Audio ) {
       Gibber.Audio.export( target )
@@ -1553,6 +1744,10 @@ var Gibber = {
     
     if( Gibber.Interface ) {
       Gibber.Interface.export( target )
+    }
+    
+    if( Gibber.Communication ) { 
+      Gibber.Communication.export( target )
     }
   },
   
@@ -1573,13 +1768,16 @@ var Gibber = {
       
       if( typeof _options === 'object' ) $.extend( options, _options )
       
+      Gibber.Pattern = Gibber.Pattern( Gibber )
       if( Gibber.Audio ) {
         Gibber.Audio.init() 
       
         if( options.globalize ) {
-          options.target.Master = Gibber.Audio.Master    
+          //options.target.Master = Gibber.Audio.Master    
         }else{
+          var _export = Gibber.export.bind( Gibber )
           $.extend( Gibber, Gibber.Audio )
+          Gibber.export = _export
         }        
       }
       
@@ -1609,8 +1807,8 @@ var Gibber = {
   //   }
   // },
   Modules : {},
- 	import : function( path, exportTo ) {
-    var _done = null;
+ 	import : function( path, exportTo, shouldSave ) {
+    var _done = null
     console.log( 'Loading module ' + path + '...' )
 
     if( path.indexOf( 'http:' ) === -1 ) { 
@@ -1619,8 +1817,8 @@ var Gibber = {
         Gibber.Environment.SERVER_URL + '/gibber/'+path, {},
         function( d ) {
           d = JSON.parse( d )
-                    
-          var f = new Function( "return " + d.text )
+                              
+          var f = new Function( 'return ' + d.text )
           
           Gibber.Modules[ path ] = f()
           
@@ -1631,6 +1829,9 @@ var Gibber = {
           if( Gibber.Modules[ path ] ) {
             if( typeof Gibber.Modules[ path ].init === 'function' ) {
               Gibber.Modules[ path ].init()
+            }
+            if( typeof Gibber.Modules[ path ] === 'object' ) {
+              Gibber.Modules[ path ].moduleText = d.text
             }
             console.log( 'Module ' + path + ' is now loaded.' )
           }else{
@@ -1739,7 +1940,7 @@ var Gibber = {
       
         $.extend( obj, preset )
         
-        if( obj.presetInit ) obj.presetInit() 
+        //if( obj.presetInit ) obj.presetInit() 
       }else if( $.isPlainObject( firstArg ) && typeof firstArg.type === 'undefined' ) {
         $.extend( obj, firstArg )
       }else{
@@ -1772,10 +1973,12 @@ var Gibber = {
   },
   
   clear : function() {
-    if( Gibber.Audio ) Gibber.Audio.clear();
+    var args = Array.prototype.slice.call( arguments, 0 )
+    if( Gibber.Audio ) Gibber.Audio.clear.apply( Gibber.Audio, args );
     
-    if( Gibber.Graphics ) Gibber.Graphics.clear()
+    if( Gibber.Graphics ) Gibber.Graphics.clear( Gibber.Graphics, args )
 
+    //Gibber.proxy( window, [ a ] )
     Gibber.proxy( window )
 		
     $.publish( '/gibber/clear', {} )
@@ -1783,44 +1986,56 @@ var Gibber = {
     console.log( 'Gibber has been cleared.' )
   },
   
+  singleton: function( lt, target ) {
+    if( !target ) target = window 
+    
+    if( $.isArray( lt ) ) {
+      for( var i = 0; i < lt.length; i++ ) {
+        Gibber.singleton( lt[ i ], target )
+      }
+      return
+    }
+    
+    if( typeof target[ lt ] !== 'undefined' ) { //&& arguments[1].indexOf( window[ lt ] ) === -1 ) { 
+      delete target[ lt ] 
+      delete target[ '___' + lt ]
+    }
+
+		var ltr = lt;
+  
+		Object.defineProperty( target, ltr, {
+      configurable: true,
+			get:function() { return target[ '___'+ltr] },
+			set:function( newObj ) {
+        if( newObj ) {
+          if( target[ '___'+ltr ] ) { 
+            if( typeof target[ '___'+ltr ].replaceWith === 'function' ) {
+              target[ '___'+ltr ].replaceWith( newObj )
+              console.log( target[ '___'+ltr ].name + ' was replaced with ' + newObj.name )
+            }
+          }
+          target[ '___'+ltr ] = newObj
+        }else{
+				  if( target[ '___'+ltr ] ) {
+				  	 var variable = target[ '___'+ltr ]
+				  	 if( variable ) {
+				  		 if( typeof variable.kill === 'function' /*&& target[ '___'+ltr ].destinations.length > 0 */) {
+				  			 variable.kill();
+				  		 }
+				  	 }
+				  }
+        }
+      }
+    });
+  },
   proxy: function( target ) {
 		var letters = "abcdefghijklmnopqrstuvwxyz"
     
 		for(var l = 0; l < letters.length; l++) {
-			var lt = letters.charAt(l);
-      if( typeof window[ lt ] !== 'undefined' ) { 
-        delete window[ lt ] 
-        delete window[ '___' + lt ]
-      }
 
-      (function() {
-				var ltr = lt;
+			var lt = letters.charAt(l);
+      Gibber.singleton( lt, target )
       
-				Object.defineProperty( target, ltr, {
-          configurable: true,
-					get:function() { return target[ '___'+ltr] },
-					set:function( newObj ) {
-            if( newObj ) {
-              if( target[ '___'+ltr ] ) { 
-                if( typeof target[ '___'+ltr ].replaceWith === 'function' ) {
-                  target[ '___'+ltr ].replaceWith( newObj )
-                  console.log( target[ '___'+ltr ].name + ' was replaced with ' + newObj.name )
-                }
-              }
-              target[ '___'+ltr ] = newObj
-            }else{
-						  if( target[ '___'+ltr ] ) {
-						  	 var variable = target[ '___'+ltr ]
-						  	 if( variable ) {
-						  		 if( typeof variable.kill === 'function' /*&& target[ '___'+ltr ].destinations.length > 0 */) {
-						  			 variable.kill();
-						  		 }
-						  	 }
-						  }
-            }
-          }
-        });
-      })();     
     }
   },
 
@@ -1838,13 +2053,12 @@ var Gibber = {
         _min = typeof from.min === 'function' ? from.min() : from.min,
         _max = typeof from.max === 'function' ? from.max() : from.max
     
-    // console.log( "MAPPING", from, target )
     if( typeof from.object === 'undefined' && from.Value) { // if using an interface object directly to map
       from = from.Value
     }
     
     if( typeof target.object[ target.Name ].mapping !== 'undefined') {
-      target.object[ target.Name ].mapping.replace( from.object, from.name, from.Name )
+      target.object[ target.Name ].mapping.replace( from.object, from.propertyName, from.Name )
       return
     }
     
@@ -1853,9 +2067,7 @@ var Gibber = {
     }
     
     var fromTimescale = from.Name !== 'Out' ? from.timescale : 'audioOut' // check for audio Out, which is a faux property
-    
-    //console.log( target.timescale, fromTimescale )
-    
+        
     mapping = Gibber.mappings[ target.timescale ][ fromTimescale ]( target, from )
     
     //target.object[ target.name ].toString = function() { return '> continuous mapping: ' + from.name + ' -> ' + target.name }
@@ -1913,97 +2125,200 @@ var Gibber = {
     from.object.mappings.push( mapping )
     
     Gibber.defineSequencedProperty( target.object[ target.Name ], 'invert' )
-    
+        
     return mapping
   },
   
   defineSequencedProperty : function( obj, key, priority ) {
-    var fnc = obj[ key ], seq, seqNumber
-    
-    // for( var i = obj.seq.seqs.length - 1; i >= 0; i-- ) {
-    //   var s = obj.seq.seqs[ i ]
-    //   if( s.key === key ) {
-    //     seq = s,
-    //     seqNumber = i
-    //     break;
-    //   }
-    // }
-    
+    var fnc = obj[ key ], seqNumber, seqNumHash = {}, seqs = {}
+
     if( !obj.seq && Gibber.Audio ) {
       obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale, priority:priority, target:obj })
     }
     
-    fnc.seq = function( v,d ) {  
-
-      var args = {
+    fnc.score = function( v,d,n ) {
+      return function() {
+        fnc.seq( v,d,n )
+      }
+    }
+    
+    fnc.seq = function( _v,_d, num ) {
+      var seq
+      if( typeof _v === 'string' && ( obj.name === 'Drums' || obj.name === 'XOX' || obj.name === 'Ensemble' )) {
+        _v = _v.split('')
+        if( typeof _d === 'undefined' ) _d = 1 / _v.length
+      }
+      
+      if( typeof obj.seq === 'function' ) {
+        obj.seq = obj.object.seq // cube.position etc. TODO: Fix this hack!
+      }
+      
+      var v = $.isArray(_v) ? _v : [_v],
+          d = $.isArray(_d) ? _d : typeof _d !== 'undefined' ? [_d] : null,
+          args = {
             'key': key,
-            values: $.isArray(v) || v !== null && typeof v !== 'function' && typeof v.length === 'number' ? v : [v],
-            durations: $.isArray(d) ? d : typeof d !== 'undefined' ? [d] : null,
+            values: [ Gibber.construct( Gibber.Pattern, v ) ],
+            durations: d !== null ? [ Gibber.construct( Gibber.Pattern, d ) ] : null,
             target: obj,
             'priority': priority
           }
-            
-      if( typeof seq !== 'undefined' ) {
-        seq.shouldStop = true
-        obj.seq.seqs.splice( seqNumber, 1 )
+
+      
+      if( typeof num === 'undefined' ) num = 0 // _num++
+       
+      if( typeof seqs[ num ] !== 'undefined' ) {
+        seqs[ num ].shouldStop = true
+        delete seqs[ num ]
+        //obj.seq.seqs.splice( seqNumHash[ num ], 1 )
       }
+            
+      var valuesPattern = args.values[0]
+      if( v.randomFlag ) {
+        valuesPattern.filters.push( function() {
+          var idx = Gibber.Utilities.rndi(0, valuesPattern.values.length - 1)
+          return [ valuesPattern.values[ idx ], 1, idx ] 
+        })
+        for( var i = 0; i < v.randomArgs.length; i+=2 ) {
+          valuesPattern.repeat( v.randomArgs[ i ], v.randomArgs[ i + 1 ] )
+        }
+      }
+
+      if( d !== null ) {
+        var durationsPattern = args.durations[0]
+        if( d.randomFlag ) {
+          durationsPattern.filters.push( function() { 
+            var idx = Gibber.Utilities.rndi(0, durationsPattern.values.length - 1)
+            return [ durationsPattern.values[ idx ], 1, idx ] 
+          })
+          for( var i = 0; i < d.randomArgs.length; i+=2 ) {
+            durationsPattern.repeat( d.randomArgs[ i ], d.randomArgs[ i + 1 ] )
+          }
+        }
+        
+        durationsPattern.seq = obj.seq
+      }
+      
+      valuesPattern.seq = obj.seq
       
       obj.seq.add( args )
       
       seqNumber = obj.seq.seqs.length - 1
-      seq = obj.seq.seqs[ seqNumber ]
+      seqs[ num ] = seq = obj.seq.seqs[ seqNumber ]
+      seqNumHash[ num ] = seqNumber   
+      //seqNumber = d !== null ? obj.seq.seqs.length - 1 : obj.seq.autofire.length - 1
+      //seqs[ seqNumber ] = d !== null ? obj.seq.seqs[ num ] : obj.seq.autofire[ num ]
       
-      if( args.durations === null ) { obj.seq.autofire.push( seq ) }
+      fnc[ num ] = {}
       
-      Object.defineProperties( fnc.seq, {
+      Object.defineProperties( fnc[ num ], {
         values: {
           configurable:true,
-          get: function() { return obj.seq.seqs[ seqNumber ].values },
-          set: function(v) {
-            if( !Array.isArray(v) ) {
-              v = [ v ]
+          get: function() { 
+            return valuesPattern
+            /*
+            if( d !== null ) { // then use autofire array
+              return obj.seq.seqs[ seqNumber ].values[0]
+            }else{
+              return obj.seq.autofire[ seqNumber ].values[0]
+            }*/
+          },
+          set: function( val ) {
+            var pattern = Gibber.construct( Gibber.Pattern, val )
+            
+            if( !Array.isArray( pattern ) ) {
+              pattern = [ pattern ]
             }
-            if( key === 'note' && obj.seq.scale ) {  
-              v = makeNoteFunction( v, obj.seq )
+
+            if( d !== null ) {
+              obj.seq.seqs[ seqNumber ].values = pattern
+            }else{
+              obj.seq.autofire[ seqNumber ].values = pattern
             }
-            obj.seq.seqs[ seqNumber ].values = v //.splice( 0, 10000, v )
-            //Gibber.defineSequencedProperty( obj.seq.seqs[ seqNumber ].values, 'reverse' )
           }
         },
         durations: {
           configurable:true,
-          get: function() { return obj.seq.seqs[ seqNumber ].durations },
-          set: function(v) {
-            if( !Array.isArray(v) ) {
-              v = [ v ]
+          get: function() { 
+            /*if( d !== null ) { // then it's not an autofire seq
+              return obj.seq.seqs[ seqNumber ].durations[ 0 ] 
+            }else{
+              return null
+            }*/
+            return durationsPattern
+          },
+          set: function( val ) {
+            if( !Array.isArray( val ) ) {
+              val = [ val ]
             }
-            obj.seq.seqs[ seqNumber ].durations = v   //.splice( 0, 10000, v )
-            //Gibber.defineSequencedProperty( obj.seq.seqs[ seqNumber ].durations, 'reverse' )  
-          }
+            //obj.seq.seqs[ seqNumber ].durations = val   //.splice( 0, 10000, v )
+            var pattern = Gibber.construct( Gibber.Pattern, val )
+            
+            if( !Array.isArray( pattern ) ) {
+              pattern = [ pattern ]
+            }
+            
+            obj.seq.seqs[ seqNumber ].durations = pattern   //.splice( 0, 10000, v )
+          },
         },
       })
       
-      //Gibber.defineSequencedProperty( obj.seq.seqs[ seqNumber ].values, 'reverse' )
-      //Gibber.defineSequencedProperty( obj.seq.seqs[ seqNumber ].durations, 'reverse' )      
+      fnc[ num ].seq = function( v, d ) {
+        fnc.seq( v,d, num ) 
+      }
       
       if( !obj.seq.isRunning ) {
         obj.seq.offset = Gibber.Clock.time( obj.offset )
         obj.seq.start( true, priority )
       }
-      return obj
-    }
+            
+      fnc.seq.stop = function() { seqs[ seqNumber ].shouldStop = true } 
     
-    fnc.seq.stop = function() { seq.shouldStop = true } 
-    
-    // TODO: property specific stop/start/shuffle etc. for polyseq
-    fnc.seq.start = function() {
-      seq.shouldStop = false
-      obj.seq.timeline[0] = [ seq ]                
-      obj.seq.nextTime = 0
+      // TODO: property specific stop/start/shuffle etc. for polyseq
+      fnc.seq.start = function() {
+        seqs[ seqNumber ].shouldStop = false
+        obj.seq.timeline[0] = [ seq ]                
+        obj.seq.nextTime = 0
       
-      if( !obj.seq.isRunning ) { 
-        obj.seq.start( false, priority )
+        if( !obj.seq.isRunning ) { 
+          obj.seq.start( false, priority )
+        }
       }
+    
+      fnc.seq.repeat = function( numberOfTimes ) {
+        var repeatCount = 0
+      
+        var filter = function( args, ptrn ) {
+          if( args[2] % (ptrn.getLength() - 1) === 0 && args[2] !== 0) {
+            repeatCount++
+            if( repeatCount === numberOfTimes ) {
+              ptrn.seq.stop()
+            }
+          }
+          return args
+        }
+      
+        fnc.values.filters.push( filter )
+      }
+    
+      fnc[ num ].score = function( __v__, __d__ ) {
+        return fnc.seq.bind( obj, __v__, __d__, num )
+      }
+    
+      Object.defineProperties( fnc, {
+        values: { 
+          configurable: true,
+          get: function() { return fnc[ num ].values },
+          set: function( val ) { return fnc[ num ].values = val },
+        },
+        durations: { 
+          configurable: true,
+          get: function() { return fnc[ num ].durations },
+          set: function( val ) { return fnc[ num ].durations = val },
+        }
+      })
+      
+      // console.log( key, fnc.values, fnc.durations )
+      return obj
     }
   },
   
@@ -2038,8 +2353,8 @@ var Gibber = {
     }
   },
   
-  createProxyMethods : function( obj, methods ) {
-    for( var i = 0; i < methods.length; i++ ) Gibber.defineSequencedProperty( obj, methods[ i ] ) 
+  createProxyMethods : function( obj, methods, priority ) {
+    for( var i = 0; i < methods.length; i++ ) Gibber.defineSequencedProperty( obj, methods[ i ], priority ) 
   },
   
   defineProperty : function( obj, propertyName, shouldSeq, shouldRamp, mappingsDictionary, shouldUseMappings, priority, useOldGetter ) {
@@ -2048,8 +2363,15 @@ var Gibber = {
         property = function( v ) {
           var returnValue = property
           
-          if( v ) { 
-            obj[ propertyName ] = v
+          if( typeof v !== 'undefined' ) { 
+            //obj[ propertyName ] = v
+            //property.value = v
+            if( property.oldSetter ) {
+              property.oldSetter.call( obj, v )
+            }else{
+              obj[ propertyName ] = v
+            }  
+            
             returnValue = obj
           }
           
@@ -2069,7 +2391,15 @@ var Gibber = {
       object:   obj,
       targets:  [],
       valueOf:  function() { return property.value },
-      toString: function() { return property.value.toString() },
+      toString: function() { 
+        var output = ""
+        if( typeof property.value === 'object' ) {
+          output = property.value.toString()
+        }else{
+          output = property.value
+        }
+        return output
+      },
       oldSetter: obj.__lookupSetter__( propertyName ),
       oldGetter: obj.__lookupGetter__( propertyName ),      
       oldMappingObjectGetter: obj.__lookupGetter__( Name ),
@@ -2092,7 +2422,6 @@ var Gibber = {
       },
       set: function( v ){
         if( (typeof v === 'function' || typeof v === 'object' && v.type === 'mapping') && ( v.type === 'property' || v.type === 'mapping' ) ) {
-          console.log( "CREATING MAPPING", property )
           Gibber.createMappingObject( property, v )
         }else{
           if( shouldUseMappings && obj[ property.Name ] ) {
@@ -2133,7 +2462,7 @@ var Gibber = {
       })
     }
   },
-  
+                                 //obj, propertyName, shouldSeq, shouldRamp, mappingsDictionary, shouldUseMappings, priority, useOldGetter
   createProxyProperty: function( obj, _key, shouldSeq, shouldRamp, dict, _useMappings, priority ) {
     _useMappings = _useMappings === false ? false : true
     
@@ -2149,7 +2478,7 @@ var Gibber = {
     
     obj.mappingProperties = mappingProperties
     obj.mappingObjects = []
-    
+        
     for( var key in mappingProperties ) {
       if( ! mappingProperties[ key ].doNotProxy ) {
         Gibber.createProxyProperty( obj, key, shouldSeq, shouldRamp, mappingProperties[ key ] )
@@ -2158,16 +2487,19 @@ var Gibber = {
   },  
 }
 
-Gibber.Utilities = _dereq_( './utilities' )( Gibber )
+Gibber.Utilities = require( './utilities' )( Gibber )
 // Gibber.Audio     = require( 'gibber.audio.lib/scripts/gibber/audio' )( Gibber )
 // Gibber.Graphics  = require( 'gibber.graphics.lib/scripts/gibber/graphics/graphics' )( Gibber )
 // Gibber.Interface = require( 'gibber.interface.lib/scripts/gibber/interface/interface' )( Gibber )
-Gibber.mappings  = _dereq_( './mappings' )( Gibber )
+Gibber.mappings  = require( './mappings' )( Gibber )
+Gibber.Euclid = require( './euclidean' )( Gibber )
+// TODO: Make Score work without requiring audio
+// Gibber.Score     = require( './score' )//( Gibber ) // only initialize once Gibber.Audio.Core is loaded, otherwise problems
 
 module.exports = Gibber
 
 })()
-},{"./dollar":5,"./mappings":7,"./utilities":8}],7:[function(_dereq_,module,exports){
+},{"./dollar":"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/dollar.js","./euclidean":"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/euclidean.js","./mappings":"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/mappings.js","./pattern":"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/pattern.js","./utilities":"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/utilities.js"}],"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/mappings.js":[function(require,module,exports){
 module.exports = function( Gibber ) {  
   var mappings = {
     audio : {
@@ -2201,13 +2533,14 @@ module.exports = function( Gibber ) {
       },
       interface: function( target, from ) {
         // TODO: why does the proxy track from.name instead of from.propertyName? maybe because interface elements don't get passed to mapping init?
-        var proxy = typeof from.track !== 'undefined' ? from.track : new Gibber.Audio.Core.Proxy2( from.object, from.name ),
+        // console.log( "Making mapping : ", from.object, from, from.propertyName, target.propertyName )
+        var proxy = typeof from.track !== 'undefined' ? from.track : new Gibber.Audio.Core.Proxy2( from.object, from.propertyName ),
             op    = new Gibber.Audio.Core.OnePole({ a0:.005, b1:.995 }),
             range = target.max - target.min,
             percent = ( target.object[ target.propertyName ] - target.min ) / range,
             widgetValue = from.min + ( ( from.max - from.min ) * percent ),
             mapping
-                
+        
         if( from.object.setValue ) from.object.setValue( widgetValue )
         
         from.track = proxy
@@ -2369,8 +2702,7 @@ module.exports = function( Gibber ) {
         return mapping
       },
       interface: function( target, from ) {
-        // console.log( "FROM", from.propertyName, target.min, target.max, from.min, from.max )
-        var _map = Gibber.Audio.Core.Binops.Map( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
+        var _map = Gibber.Audio.Core.Binops.Map( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
             mapping
             
         if( typeof from.object.functions === 'undefined' ) {
@@ -2389,7 +2721,7 @@ module.exports = function( Gibber ) {
         var fcn_name = target.propertyName + ' <- ' + from.object.propertyName + '.' + from.Name
 
         from.object.functions[ fcn_name ] = function() {
-          var val = mapping.callback( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
+          var val = mapping.callback( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap )
           // target.object[ target.Name ].value = val
           // console.log( target.Name )
           target.object[ target.Name ].oldSetter.call( target.object[ target.Name ], val )
@@ -2523,7 +2855,6 @@ module.exports = function( Gibber ) {
             
           }
         }else{
-          console.log("REPLACING MAPPING")
           mapping.replace( from.object, from.propertyName, from.Name )
           return mapping
         }
@@ -2561,7 +2892,6 @@ module.exports = function( Gibber ) {
           }else if( target.modObject ) {
             target.modObject.removeMod( target.modName )
           }else{
-            console.log( 'removing update ')
             //target.object.update = function() {}
           }
           
@@ -2736,8 +3066,6 @@ module.exports = function( Gibber ) {
         if( typeof target.object[ target.Name ].mapping === 'undefined') {
           var mapping = target.object[ target.Name ].mapping = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, 0, 1, 0 )
           
-          console.log( "MAPPING", from )
-          
           if( typeof from.object.track !== 'undefined' && from.object.track.input === from.object.properties[ from.propertyName ] ) {
             mapping.follow = from.object.track
             mapping.follow.count++
@@ -2758,10 +3086,8 @@ module.exports = function( Gibber ) {
           mapping.input = mapping.follow
           mapping.bus = new Gibber.Audio.Core.Bus2({ amp:0 }).connect()
           mapping.connect( mapping.bus )
-        
-          mapping.replace = function( replacementObject, key, Key  ) {
-            // _console.log( key, replacementObject )
-            
+          
+          mapping.replace = function( replacementObject, key, Key  ) {            
             // what if new mapping isn't audio type?
             if ( replacementObject[ Key ].timescale === from.timescale ) {
               var idx = mapping.follow.input[ from.Name ].targets.indexOf( target )
@@ -2818,7 +3144,350 @@ module.exports.outputCurves= {
   LINEAR:0,
   LOGARITHMIC:1
 }
-},{}],8:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/pattern.js":[function(require,module,exports){
+module.exports = function( Gibber ) {
+
+"use strict"
+
+var $ = require( './dollar' )
+
+var PatternProto = {
+  concat : function( _pattern ) { this.values = this.values.concat( _pattern.values ) },  
+  toString: function() { return this.values.toString() },
+  valueOf: function() { return this.values },
+  getLength: function() {
+    var l
+    if( this.start <= this.end ) {
+      l = this.end - this.start + 1
+    }else{
+      l = this.values.length + this.end - this.start + 1
+    }
+    return l
+  },
+  runFilters : function( val, idx ) {
+    var args = [ val, 1, idx ] // 1 is phaseModifier
+
+    for( var i = 0; i < this.filters.length; i++ ) {
+      args = this.filters[ i ]( args, this )
+    }
+    
+    return args
+  },
+  _onchange : function() {},
+}
+
+var Pattern = function() {
+  if( ! ( this instanceof Pattern ) ) {
+    var args = Array.prototype.slice.call( arguments, 0 )
+    return Gibber.construct( Pattern, args )
+  }
+
+  var fnc = function() {
+    var len = fnc.getLength(),
+        idx, val, args
+    
+    if( len === 1 ) { 
+      idx = 0 
+    }else{
+      idx = fnc.phase >-1 ? Math.floor( fnc.start + (fnc.phase % len ) ) : Math.floor( fnc.end + (fnc.phase % len ) )
+    }
+    
+    val = fnc.values[ Math.floor( idx % fnc.values.length ) ]
+    args = fnc.runFilters( val, idx )
+    
+    fnc.phase += fnc.stepSize * args[ 1 ]
+    val = args[ 0 ]
+    
+    if( typeof val === 'function' ) val = val()
+    
+    // if pattern has update function, set new value
+    if( fnc.update ) fnc.update.value = val
+    
+    return val
+  }
+   
+  $.extend( fnc, {
+    start : 0,
+    end   : 0,
+    phase : 0,
+    values : Array.prototype.slice.call( arguments, 0 ),
+    //values : typeof arguments[0] !== 'string' || arguments.length > 1 ? Array.prototype.slice.call( arguments, 0 ) : arguments[0].split(''),    
+    original : null,
+    storage : [],
+    stepSize : 1,
+    integersOnly : false,
+    filters : [],
+    onchange : null,
+
+    range : function() {
+      var start, end
+      if( Array.isArray( arguments[0] ) ) {
+        start = arguments[0][0]
+        end   = arguments[0][1]
+      }else{
+        start = arguments[0]
+        end   = arguments[1]
+      }
+      
+      if( start < end ) {
+        fnc.start = start
+        fnc.end = end
+      }else{
+        fnc.start = end
+        fnc.end = start
+      }
+      
+      return fnc;
+    },
+    
+    set: function() {
+      fnc.values.length = 0
+      
+      for( var i = 0; i < arguments[0].length; i++ ) {
+        fnc.values.push( arguments[0][i] )
+      }
+      
+      if( fnc.end > fnc.values.length - 1 ) { fnc.end = fnc.values.length - 1 }
+    },
+     
+    reverse : function() { 
+      //fnc.values.reverse(); 
+      var array = fnc.values,
+          left = null,
+          right = null,
+          length = array.length,
+          temporary;
+          
+      for (left = 0, right = length - 1; left < right; left += 1, right -= 1) {
+        temporary = array[left];
+        array[left] = array[right];
+        array[right] = temporary;
+      }
+      
+      fnc._onchange() 
+      
+      return fnc;
+    },
+    // humanize: function( randomMin, randomMax ) {
+ //      var lastAmt = 0
+ //
+ //      for( var i = 0; i < this.filters.length; i++ ) {
+ //        if( this.filters[ i ].humanize ) {
+ //          lastAmt = this.filters[ i ].lastAmt
+ //          this.filters.splice( i, 1 )
+ //          break;
+ //        }
+ //      }
+ //
+ //      var filter = function( args ) {
+ //        console.log( filter.lastAmt, args[0])
+ //        args[ 0 ] -= filter.lastAmt
+ //        filter.lastAmt = Gibber.Clock.time( Gibber.Utilities.rndi( randomMin, randomMax ) )
+ //
+ //        console.log( "LA", filter.lastAmt )
+ //        args[0] += filter.lastAmt
+ //
+ //        return args
+ //      }
+ //      filter.lastAmt = lastAmt
+ //      filter.humanize = true
+ //
+ //      this.filters.push( filter )
+ //
+ //      return this
+ //    },
+    repeat: function() {
+      var counts = {}
+    
+      for( var i = 0; i < arguments.length; i +=2 ) {
+        counts[ arguments[ i ] ] = {
+          phase: 0,
+          target: arguments[ i + 1 ]
+        }
+      }
+      
+      var repeating = false, repeatValue = null, repeatIndex = null
+      var filter = function( args ) {
+        var value = args[ 0 ], phaseModifier = args[ 1 ], output = args
+        
+        //console.log( args, counts )
+        if( repeating === false && counts[ value ] ) {
+          repeating = true
+          repeatValue = value
+          repeatIndex = args[2]
+        }
+        
+        if( repeating === true ) {
+          if( counts[ repeatValue ].phase !== counts[ repeatValue ].target ) {
+            output[ 0 ] = repeatValue            
+            output[ 1 ] = 0
+            output[ 2 ] = repeatIndex
+            //[ val, 1, idx ]
+            counts[ repeatValue ].phase++
+          }else{
+            counts[ repeatValue ].phase = 0
+            output[ 1 ] = 1
+            if( value !== repeatValue ) { 
+              repeating = false
+            }else{
+              counts[ repeatValue ].phase++
+            }
+          }
+        }
+      
+        return output
+      }
+    
+      fnc.filters.push( filter )
+    
+      return fnc
+    },
+  
+    reset : function() { fnc.values = fnc.original.slice( 0 ); fnc._onchange(); return fnc; },
+    store : function() { fnc.storage[ fnc.storage.length ] = fnc.values.slice( 0 ); return fnc; },
+    transpose : function( amt ) { 
+      for( var i = 0; i < fnc.values.length; i++ ) { 
+        var val = fnc.values[ i ]
+        
+        if( $.isArray( val ) ) {
+          for( var j = 0; j < val.length; j++ ) {
+            if( typeof val[ j ] === 'number' ) {
+              val[ j ] = fnc.integersOnly ? Math.round( val[ j ] + amt ) : val[ j ] + amt
+            }
+          }
+        }else{
+          if( typeof val === 'number' ) {
+            fnc.values[ i ] = fnc.integersOnly ? Math.round( fnc.values[ i ] + amt ) : fnc.values[ i ] + amt
+          }
+        }
+      }
+      
+      fnc._onchange()
+      
+      return fnc
+    },
+    shuffle : function() { 
+      Gibber.Utilities.shuffle( fnc.values )
+      fnc._onchange()
+      
+      return fnc
+    },
+    scale : function( amt ) { 
+      for( var i = 0; i < fnc.values.length; i++ ) {
+        var val = fnc.values[ i ]
+        if( $.isArray( val ) ) {
+          for( var j = 0; j < val.length; j++ ) {
+            if( typeof val[ j ] === 'number' ) {
+              val[ j ] = fnc.integersOnly ? Math.round( val[ j ] * amt ) : val[ j ] * amt
+            }
+          }
+        }else{
+          if( typeof val === 'number' ) {
+            fnc.values[ i ] = fnc.integersOnly ? Math.round( fnc.values[ i ] * amt ) : fnc.values[ i ] * amt
+          }
+        }
+      }
+      fnc._onchange()
+      
+      return fnc
+    },
+
+    flip : function() {
+      var start = [],
+          ordered = null
+    
+      ordered = fnc.values.filter( function(elem) {
+      	var shouldPush = start.indexOf( elem ) === -1
+        if( shouldPush ) start.push( elem )
+        return shouldPush
+      })
+    
+      ordered = ordered.sort( function( a,b ){ return a - b } )
+    
+      for( var i = 0; i < fnc.values.length; i++ ) {
+        var pos = ordered.indexOf( fnc.values[ i ] )
+        fnc.values[ i ] = ordered[ ordered.length - pos - 1 ]
+      }
+      
+      fnc._onchange()
+    
+  		return fnc
+    },
+    
+    invert: function() {
+      var prime0 = fnc.values[ 0 ]
+      
+      for( var i = 1; i < fnc.values.length; i++ ) {
+        if( typeof fnc.values[ i ] === 'number' ) {
+          var inverse = prime0 + (prime0 - fnc.values[ i ])
+          fnc.values[ i ] = inverse
+        }
+      }
+      
+      fnc._onchange()
+      
+  		return fnc
+    },
+  
+    switch : function( to ) {
+      if( fnc.storage[ to ] ) {
+        fnc.values = fnc.storage[ to ].slice( 0 )
+      }
+      
+      fnc._onchange()
+      
+      return fnc
+    },
+  
+    rotate : function( amt ) {
+      if( amt > 0 ) {
+        while( amt > 0 ) {
+          var end = fnc.values.pop()
+          fnc.values.unshift( end )
+          amt--
+        }
+      }else if( amt < 0 ) {
+        while( amt < 0 ) {
+          var begin = fnc.values.shift()
+          fnc.values.push( begin )
+          amt++
+        }
+      }
+      
+      fnc._onchange()
+      
+      return fnc
+    }
+  })
+  
+  fnc.retrograde = fnc.reverse.bind( fnc )
+  
+  fnc.end = fnc.values.length - 1
+  
+  fnc.original = fnc.values.slice( 0 )
+  fnc.storage[ 0 ] = fnc.original.slice( 0 )
+  
+  fnc.integersOnly = fnc.values.every( function( n ) { return n === +n && n === (n|0); })
+  
+  Gibber.createProxyMethods( fnc, [
+    'rotate','switch','invert','reset', 'flip',
+    'transpose','reverse','shuffle','scale',
+    'store', 'range', 'set'
+  ], true )
+  
+  Gibber.createProxyProperties( fnc, { 'stepSize':0, 'start':0, 'end':0 })
+  
+  fnc.__proto__ = this.__proto__ 
+  
+  return fnc
+}
+
+Pattern.prototype = PatternProto
+
+return Pattern
+
+}
+},{"./dollar":"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/dollar.js"}],"/www/gibber.graphics.lib/node_modules/gibber.core.lib/scripts/utilities.js":[function(require,module,exports){
 module.exports = function( Gibber ) {
 
 "use strict"
@@ -2860,38 +3529,37 @@ var soloGroup = [],
         return output
       },
       random :  function() {
-        var dict = {},
-            lastChosen = null;
+        this.randomFlag = true
+        this.randomArgs = Array.prototype.slice.call( arguments, 0 )
+        // var dict = {},
+        //     lastChosen = null;
+        //     
+        // for(var i = 0; i < arguments.length; i+=2) {
+        //   dict[ "" + arguments[i] ] = { repeat: arguments[i+1], count: 0 };
+        // }
+        // 
+        // this.pick = function() {
+        //   var value = 0, index, lastValue;
+        //   if(this[lastChosen]) lastValue = this[lastChosen]
+        // 
+        //   if(lastChosen !== null && dict[ lastValue ].count++ <= dict[ lastValue ].repeat) {
+        //     index = lastChosen;
+        //     if( dict[ lastValue ].count >= dict[ lastValue ].repeat) {
+        //       dict[ lastValue ].count = 0;
+        //       lastChosen = null;
+        //     };
+        //   }else{
+        //     index = Utilities.rndi(0, this.length - 1);
+        //     value = this[index];
+        //     if( typeof dict[ ""+value ] !== 'undefined' ) {
+        //       dict[ ""+value ].count = 1;
+        //       lastChosen = index;
+        //     }else{
+        //       lastChosen = null;
+        //     }
+        //   }
     
-        for(var i = 0; i < arguments.length; i+=2) {
-          dict[ "" + arguments[i] ] = { repeat: arguments[i+1], count: 0 };
-        }
-
-        this.pick = function() {
-          var value = 0, index, lastValue;
-          if(this[lastChosen]) lastValue = this[lastChosen]
-
-          if(lastChosen !== null && dict[ lastValue ].count++ <= dict[ lastValue ].repeat) {
-            index = lastChosen;
-            if( dict[ lastValue ].count >= dict[ lastValue ].repeat) {
-              dict[ lastValue ].count = 0;
-              lastChosen = null;
-            };
-          }else{
-            index = Utilities.rndi(0, this.length - 1);
-            value = this[index];
-            if( typeof dict[ ""+value ] !== 'undefined' ) {
-              dict[ ""+value ].count = 1;
-              lastChosen = index;
-            }else{
-              lastChosen = null;
-            }
-          }
-      
-        	return index; // return index, not value as required by secondary notation stuff
-        };
-    
-        return this;
+        return this
       },
   
       random2 : function() {
@@ -3219,18 +3887,18 @@ var soloGroup = [],
         // window.solo = Utilities.solo
         // window.future = Utilities.future // TODO: fix global reference
         Array.prototype.random = Array.prototype.rnd = Utilities.random
-        Array.prototype.weight = Utilities.weight
-        Array.prototype.fill = Utilities.fill
-        Array.prototype.choose = Utilities.choose
-        // Array.prototype.Rnd = Utilities.random2
-        Array.prototype.merge = Utilities.merge
-      }  
+        // Array.prototype.weight = Utilities.weight
+        // Array.prototype.fill = Utilities.fill
+        // Array.prototype.choose = Utilities.choose
+        // // Array.prototype.Rnd = Utilities.random2
+        // Array.prototype.merge = Utilities.merge
+      }
     }
   
   return Utilities
 }
 
-},{}],9:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/CopyShader.js":[function(require,module,exports){
 /**
  * @author alteredq / http://alteredqualia.com/
  *
@@ -3278,7 +3946,7 @@ THREE.CopyShader = {
 
 };
 
-},{}],10:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/DotScreenPass.js":[function(require,module,exports){
 /**
  * @author alteredq / http://alteredqualia.com/
  */
@@ -3334,7 +4002,7 @@ THREE.DotScreenPass.prototype = {
 
 };
 
-},{}],11:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/EffectComposer.js":[function(require,module,exports){
 /**
  * @author alteredq / http://alteredqualia.com/
  */
@@ -3480,7 +4148,7 @@ THREE.EffectComposer.quad = new THREE.Mesh( new THREE.PlaneGeometry( 2, 2 ), nul
 THREE.EffectComposer.scene = new THREE.Scene();
 THREE.EffectComposer.scene.add( THREE.EffectComposer.quad );
 
-},{}],12:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/FilmPass.js":[function(require,module,exports){
 /**
  * @author alteredq / http://alteredqualia.com/
  */
@@ -3536,7 +4204,7 @@ THREE.FilmPass.prototype = {
 
 };
 
-},{}],13:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/MaskPass.js":[function(require,module,exports){
 /**
  * @author alteredq / http://alteredqualia.com/
  */
@@ -3624,7 +4292,7 @@ THREE.ClearMaskPass.prototype = {
 
 };
 
-},{}],14:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/RenderPass.js":[function(require,module,exports){
 /**
  * @author alteredq / http://alteredqualia.com/
  */
@@ -3677,7 +4345,7 @@ THREE.RenderPass.prototype = {
 
 };
 
-},{}],15:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/ShaderPass.js":[function(require,module,exports){
 /**
  * @author alteredq / http://alteredqualia.com/
  */
@@ -3730,7 +4398,7 @@ THREE.ShaderPass.prototype = {
 
 };
 
-},{}],16:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/BleachBypassShader.js":[function(require,module,exports){
 /**
  * @author alteredq / http://alteredqualia.com/
  *
@@ -3796,7 +4464,7 @@ THREE.BleachBypassShader = {
 
 };
 
-},{}],17:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/ColorifyShader.js":[function(require,module,exports){
 /**
  * @author alteredq / http://alteredqualia.com/
  *
@@ -3847,7 +4515,7 @@ THREE.ColorifyShader = {
 
 };
 
-},{}],18:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/DotScreenShader.js":[function(require,module,exports){
 /**
  * @author alteredq / http://alteredqualia.com/
  *
@@ -3917,7 +4585,7 @@ THREE.DotScreenShader = {
 
 };
 
-},{}],19:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/EdgeShader.js":[function(require,module,exports){
 /**
  * @author zz85 / https://github.com/zz85 | https://www.lab4games.net/zz85/blog
  *
@@ -4012,7 +4680,7 @@ THREE.EdgeShader = {
 	].join("\n")
 };
 
-},{}],20:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/FilmShader.js":[function(require,module,exports){
 /**
  * @author alteredq / http://alteredqualia.com/
  *
@@ -4118,7 +4786,7 @@ THREE.FilmShader = {
 
 };
 
-},{}],21:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/FocusShader.js":[function(require,module,exports){
 /**
  * @author alteredq / http://alteredqualia.com/
  *
@@ -4211,7 +4879,7 @@ THREE.FocusShader = {
 	].join("\n")
 };
 
-},{}],22:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/KaleidoShader.js":[function(require,module,exports){
 /**
  * @author felixturner / http://airtight.cc/
  *
@@ -4273,7 +4941,7 @@ THREE.KaleidoShader = {
 
 };
 
-},{}],23:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/ShaderGodRays.js":[function(require,module,exports){
 /**
  * @author huwb / http://huwbowles.com/
  *
@@ -4583,7 +5251,7 @@ THREE.ShaderGodRays = {
 
 };
 
-},{}],24:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/external/three/three.min.js":[function(require,module,exports){
 // three.js - http://github.com/mrdoob/three.js
 
 !function(){
@@ -5299,7 +5967,7 @@ fragmentShader:"uniform vec3 color;\nuniform sampler2D map;\nuniform float opaci
 
 module.exports = THREE
 }()
-},{}],25:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/gibber/2d.js":[function(require,module,exports){
 module.exports = function( Gibber, Graphics ) {
   "use strict"
   var $ = Gibber.dollar
@@ -5323,6 +5991,11 @@ module.exports = function( Gibber, Graphics ) {
         if( this.canvasObject ) {
           this.canvasObject._update()
         }
+      }
+    },
+    hide: function() {
+      if( this.canvas ) {
+        this.canvasObject.hide()
       }
     },
     remove: function() {
@@ -5420,7 +6093,7 @@ module.exports = function( Gibber, Graphics ) {
           
         },
 
-        canvas: canvas,
+        //canvas: canvas,
         is3D: Graphics.mode === '3d',
         texture:  { needsUpdate: function() {} },//tex || { needsUpdate: function() {} }, 
         remove : function() {
@@ -5777,7 +6450,8 @@ module.exports = function( Gibber, Graphics ) {
         //   Graphics.graph.push( that )
         // }
       })
-
+       
+      //that.canvas = canvas
       cnvs = that
 
       Object.defineProperties( that, {
@@ -5814,7 +6488,7 @@ module.exports = function( Gibber, Graphics ) {
   
   return TwoD
 }
-},{}],26:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/gibber/3d.js":[function(require,module,exports){
 module.exports = function( Gibber, Graphics ) {
   "use strict"
   
@@ -5962,16 +6636,7 @@ module.exports = function( Gibber, Graphics ) {
   
   return ThreeD
 }
-},{}],27:[function(_dereq_,module,exports){
-!function() {
-
-var Gibber = _dereq_( 'gibber.core.lib' )
-Gibber.Graphics = _dereq_( './graphics.js')( Gibber )
-
-module.exports = Gibber
-
-}()
-},{"./graphics.js":30,"gibber.core.lib":6}],28:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/gibber/geometry.js":[function(require,module,exports){
 module.exports = function( Gibber, Graphics, THREE ){ 
 
 "use strict"
@@ -6015,6 +6680,31 @@ var types = [
     return obj
   }
 })
+
+Vec2.random = function( min, max ) {
+	if( typeof min === 'undefined' ) min = 0
+	if( typeof max === 'undefined' ) max = min + 1
+  return Vec2( rndf(min,max), rndf(min,max) )
+}
+
+Vec2.div = function( _vec, scalar ) {
+  var vec = _vec.clone()
+  vec.divideScalar( scalar )
+  return vec
+}
+
+Vec2.sub = function( a, b ) {
+  var vec = a.clone()
+  vec.sub( b )
+  return vec
+}
+
+THREE.Vector2.prototype.limit = function( limit ) {
+	if( this.length() > limit ) {
+    this.normalize()
+    this.multiplyScalar( limit )
+  }
+}
 
 var types = {
       Cube:  { width:50, height:50, depth:50 },
@@ -6410,7 +7100,7 @@ return Geometry;
 
 }
 
-},{}],29:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/gibber/gibber_shaders.js":[function(require,module,exports){
 module.exports = function( Gibber, Graphics ) {
 
 "use strict"
@@ -6633,7 +7323,7 @@ return Shaders
 //$.extend( window, Gibber.Graphics.Geometry )
 
 }
-},{}],30:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/gibber/graphics.js":[function(require,module,exports){
 module.exports = function( Gibber ) {
 
 "use strict"
@@ -6641,7 +7331,7 @@ module.exports = function( Gibber ) {
 var $ = Gibber.dollar,
 
 Graphics = {
-  Color: _dereq_( 'color' ),
+  Color: require( 'color' ),
   canvas :  null,
   canvas2D: null,
   canvas3D: null,
@@ -6653,8 +7343,9 @@ Graphics = {
   fps: null,
   graph: [],
   initialized: false,
+  mode: null,
   defaultContainer: '#contentCell',
-  THREE: _dereq_('../external/three/three.min'),
+  THREE: require('../external/three/three.min'),
   
   export: function( target ) {
     Graphics.Geometry.export( target )
@@ -6678,22 +7369,26 @@ Graphics = {
   
   init : function( mode, container ) { 
     if( mode === '3d' && !window.WebGLRenderingContext ) {
-      var msg = 'Your browser does not support WebGL.' + 
-                '2D drawing will work, but 3D geometries and shaders are not supported.'
+      var msg = 'Your browser does not support WebGL. 2D drawing will work, but 3D geometries and shaders are not supported.'
         
       Gibber.Environment.Message.post( msg )
     }
     
+    var _mode = this.mode
+    
     this.mode = mode || '3d'
 
     if( this.modes[ this.mode ].canvas === null ) {
-                                    //Graphics.modes['2d'].constructor()
       this.modes[ this.mode ].obj = this.modes[ this.mode ].constructor( container )
       // if( this.mode === '2d' ) {
       //   this.modes[ '2d' ].canvas = this.modes[ this.mode ].obj
       // }
     }
     
+    // console.log( "_MODE", _mode )
+    if( _mode !== null && typeof _mode !== 'undefined' && _mode !== this.mode ) {
+      this.modes[ _mode ].obj.hide()
+    } 
     if( this.modes[ this.mode ].obj.init ) { this.modes[ this.mode ].obj.init( container ) }
     
     if( this.modes[ this.mode ].canvas !== null ) {
@@ -6737,6 +7432,13 @@ Graphics = {
     });
     
     this.start()
+    
+    if( $( this.canvas ).css( 'display' ) === 'none' ) {
+      console.log( 'toggling!' )
+      $( this.canvas ).css( 'display', 'block' )
+    }else{
+      console.log( "not hidden", $( this.canvas ).css( 'display') )
+    }
 
     var resize = function( props ) { // I hate Safari on 10.6 for not having bind...
       Graphics.width = props.w
@@ -6829,6 +7531,7 @@ Graphics = {
       //this.ctx = null
       this.running = false
       //this.initialized = false
+      //this.mode = null
     }
   },
   render : function() {
@@ -6875,7 +7578,7 @@ Graphics = {
     Graphics.width  = parent === document.querySelector('body') ? parent.offsetWidth  : (parent.offsetWidth || parent.width() ) 
     
     // TODO: sheesh
-    Graphics.height = parent === document.querySelector('body') ? parent.offsetHeight : (parent.offsetHeight || parent[0] ? parent[0].offsetHeight : $( $('#contentCell').children()[0] ).height() )
+    Graphics.height = parent === document.querySelector('body') ? parent.offsetHeight : ( $( $('#contentCell').children()[0] ).height() || parent.offsetHeight )
     
     if( document.querySelector( '#header' ) !== null && parent === window ) {
       if( Gibber.Environment.Layout.fullScreenColumn === null) { 
@@ -6900,45 +7603,45 @@ Graphics.render = Graphics.render.bind( Graphics )
   
 Graphics.modes = {
   '2d':{
-    constructor: _dereq_( './2d' )( Gibber, Graphics ),
+    constructor: require( './2d' )( Gibber, Graphics ),
     canvas: null,
     obj: null,
   },
   '3d':{
-    constructor: _dereq_( './3d' )( Gibber, Graphics ),
+    constructor: require( './3d' )( Gibber, Graphics ),
     canvas: null,
     obj: null
   }
 }
   
-Graphics.Geometry = _dereq_( './geometry' )( Gibber, Graphics, Graphics.THREE )
+Graphics.Geometry = require( './geometry' )( Gibber, Graphics, Graphics.THREE )
 
-_dereq_( '../external/three/postprocessing/EffectComposer' )
-_dereq_( '../external/three/postprocessing/RenderPass' )
-_dereq_( '../external/three/postprocessing/MaskPass' )
-_dereq_( '../external/three/postprocessing/ShaderPass' )
-_dereq_( '../external/three/postprocessing/CopyShader' )
-_dereq_( '../external/three/postprocessing/shaders/DotScreenShader' )
-_dereq_( '../external/three/postprocessing/DotScreenPass' )
-_dereq_( '../external/three/postprocessing/FilmPass' )
-_dereq_( '../external/three/postprocessing/shaders/FilmShader' )
-_dereq_( '../external/three/postprocessing/shaders/KaleidoShader' )
-_dereq_( '../external/three/postprocessing/shaders/EdgeShader' )
-_dereq_( '../external/three/postprocessing/shaders/FocusShader' )
-_dereq_( '../external/three/postprocessing/shaders/ShaderGodRays' )
-_dereq_( '../external/three/postprocessing/shaders/BleachBypassShader' )
-_dereq_( '../external/three/postprocessing/shaders/ColorifyShader' )
+require( '../external/three/postprocessing/EffectComposer' )
+require( '../external/three/postprocessing/RenderPass' )
+require( '../external/three/postprocessing/MaskPass' )
+require( '../external/three/postprocessing/ShaderPass' )
+require( '../external/three/postprocessing/CopyShader' )
+require( '../external/three/postprocessing/shaders/DotScreenShader' )
+require( '../external/three/postprocessing/DotScreenPass' )
+require( '../external/three/postprocessing/FilmPass' )
+require( '../external/three/postprocessing/shaders/FilmShader' )
+require( '../external/three/postprocessing/shaders/KaleidoShader' )
+require( '../external/three/postprocessing/shaders/EdgeShader' )
+require( '../external/three/postprocessing/shaders/FocusShader' )
+require( '../external/three/postprocessing/shaders/ShaderGodRays' )
+require( '../external/three/postprocessing/shaders/BleachBypassShader' )
+require( '../external/three/postprocessing/shaders/ColorifyShader' )
 
-Graphics.PostProcessing = _dereq_( './postprocessing' )( Gibber, Graphics )
+Graphics.PostProcessing = require( './postprocessing' )( Gibber, Graphics )
 Graphics.PostProcessing.init()
-Graphics.Shaders = _dereq_( './shader' )( Gibber, Graphics )
-Graphics.GibberShaders = _dereq_( './gibber_shaders' )( Gibber, Graphics )
-Graphics.Video = _dereq_( './video' )( Gibber, Graphics )
+Graphics.Shaders = require( './shader' )( Gibber, Graphics )
+Graphics.GibberShaders = require( './gibber_shaders' )( Gibber, Graphics )
+Graphics.Video = require( './video' )( Gibber, Graphics )
   
 return Graphics; 
 
 }
-},{"../external/three/postprocessing/CopyShader":9,"../external/three/postprocessing/DotScreenPass":10,"../external/three/postprocessing/EffectComposer":11,"../external/three/postprocessing/FilmPass":12,"../external/three/postprocessing/MaskPass":13,"../external/three/postprocessing/RenderPass":14,"../external/three/postprocessing/ShaderPass":15,"../external/three/postprocessing/shaders/BleachBypassShader":16,"../external/three/postprocessing/shaders/ColorifyShader":17,"../external/three/postprocessing/shaders/DotScreenShader":18,"../external/three/postprocessing/shaders/EdgeShader":19,"../external/three/postprocessing/shaders/FilmShader":20,"../external/three/postprocessing/shaders/FocusShader":21,"../external/three/postprocessing/shaders/KaleidoShader":22,"../external/three/postprocessing/shaders/ShaderGodRays":23,"../external/three/three.min":24,"./2d":25,"./3d":26,"./geometry":28,"./gibber_shaders":29,"./postprocessing":31,"./shader":32,"./video":33,"color":1}],31:[function(_dereq_,module,exports){
+},{"../external/three/postprocessing/CopyShader":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/CopyShader.js","../external/three/postprocessing/DotScreenPass":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/DotScreenPass.js","../external/three/postprocessing/EffectComposer":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/EffectComposer.js","../external/three/postprocessing/FilmPass":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/FilmPass.js","../external/three/postprocessing/MaskPass":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/MaskPass.js","../external/three/postprocessing/RenderPass":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/RenderPass.js","../external/three/postprocessing/ShaderPass":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/ShaderPass.js","../external/three/postprocessing/shaders/BleachBypassShader":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/BleachBypassShader.js","../external/three/postprocessing/shaders/ColorifyShader":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/ColorifyShader.js","../external/three/postprocessing/shaders/DotScreenShader":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/DotScreenShader.js","../external/three/postprocessing/shaders/EdgeShader":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/EdgeShader.js","../external/three/postprocessing/shaders/FilmShader":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/FilmShader.js","../external/three/postprocessing/shaders/FocusShader":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/FocusShader.js","../external/three/postprocessing/shaders/KaleidoShader":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/KaleidoShader.js","../external/three/postprocessing/shaders/ShaderGodRays":"/www/gibber.graphics.lib/scripts/external/three/postprocessing/shaders/ShaderGodRays.js","../external/three/three.min":"/www/gibber.graphics.lib/scripts/external/three/three.min.js","./2d":"/www/gibber.graphics.lib/scripts/gibber/2d.js","./3d":"/www/gibber.graphics.lib/scripts/gibber/3d.js","./geometry":"/www/gibber.graphics.lib/scripts/gibber/geometry.js","./gibber_shaders":"/www/gibber.graphics.lib/scripts/gibber/gibber_shaders.js","./postprocessing":"/www/gibber.graphics.lib/scripts/gibber/postprocessing.js","./shader":"/www/gibber.graphics.lib/scripts/gibber/shader.js","./video":"/www/gibber.graphics.lib/scripts/gibber/video.js","color":"/www/gibber.graphics.lib/node_modules/color/color.js"}],"/www/gibber.graphics.lib/scripts/gibber/postprocessing.js":[function(require,module,exports){
 module.exports = function( Gibber, Graphics ) {
 
 "use strict"
@@ -7223,8 +7926,10 @@ var PP = {
             Gibber.Graphics.init( '3d' )
           }else if( Gibber.Graphics.mode === '2d' ) {
             Gibber.Graphics.useCanvasAsTexture( Gibber.Graphics.modes['2d'].obj.canvasObject )
+          }else if( $( Gibber.Graphics.canvas ).css( 'display' ) === 'none' ) {
+            $( Gibber.Graphics.canvas ).css( 'display', 'block' )
           }
-          
+                    
           Gibber.Graphics.running = true 
           
 					if( name !== 'Shader' ) {
@@ -7469,36 +8174,36 @@ var PP = {
   },
 }
 
-var types = [
-  [ 'Vec2', 'Vector2', 'vec2' ],
-  [ 'Vec3', 'Vector3', 'vec3' ],
-  [ 'Vec4', 'Vector4', 'vec4' ],    
-]
-.forEach( function( element, index, array ) {
-  var type = element[ 0 ],
-    threeType = element[ 1 ] || element[ 0 ],
-    shaderType = element[ 2 ] || 'f'
-    
-  window[ type ] = function() {
-    var args = Array.prototype.slice.call( arguments, 0 ),
-        obj
-    
-    if( Array.isArray( args[0] ) ) {
-      var _args = []
-      for( var i = 0; i < args[0].length; i++ ) {
-        _args[ i ] = args[0][ i ]
-      }
-      args = _args
-    }    
-        
-    obj = Gibber.construct( THREE[ threeType ], args )
-    
-    obj.name = type
-    obj.shaderType = shaderType
-    
-    return obj
-  }
-})
+// var types = [
+//   [ 'Vec2', 'Vector2', 'vec2' ],
+//   [ 'Vec3', 'Vector3', 'vec3' ],
+//   [ 'Vec4', 'Vector4', 'vec4' ],    
+// ]
+// .forEach( function( element, index, array ) {
+//   var type = element[ 0 ],
+//     threeType = element[ 1 ] || element[ 0 ],
+//     shaderType = element[ 2 ] || 'f'
+//     
+//   window[ type ] = function() {
+//     var args = Array.prototype.slice.call( arguments, 0 ),
+//         obj
+//     
+//     if( Array.isArray( args[0] ) ) {
+//       var _args = []
+//       for( var i = 0; i < args[0].length; i++ ) {
+//         _args[ i ] = args[0][ i ]
+//       }
+//       args = _args
+//     }    
+//         
+//     obj = Gibber.construct( THREE[ threeType ], args )
+//     
+//     obj.name = type
+//     obj.shaderType = shaderType
+//     
+//     return obj
+//   }
+// })
 
 var threeTypes = {
   'vec2' : 'v2',
@@ -7565,7 +8270,7 @@ return PP
 
 }
 
-},{}],32:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/gibber/shader.js":[function(require,module,exports){
 module.exports = function( Gibber, Graphics ) {
   var GG = Gibber.Graphics
 	
@@ -7621,9 +8326,7 @@ module.exports = function( Gibber, Graphics ) {
       _shader.fragmentShader = Graphics.PostProcessing.defs + _shader.fragmentShader
 	    
       if( !Gibber.Graphics.running ) {
-        console.log( "GRAPHICS INIT")
         Gibber.Graphics.init( '3d' )
-        console.log( "MODE", Gibber.Graphics.mode )
       }else{
         if( Gibber.Graphics.mode === '2d' ) {
           Gibber.Graphics.use( '3d' )
@@ -7792,7 +8495,7 @@ module.exports = function( Gibber, Graphics ) {
     //   return null
     // } 
 }
-},{}],33:[function(_dereq_,module,exports){
+},{}],"/www/gibber.graphics.lib/scripts/gibber/video.js":[function(require,module,exports){
 /*
 a = Video()
 
@@ -7878,6 +8581,5 @@ module.exports = function( Gibber, Graphics ) {
   
   return Video 
 }
-},{}]},{},[27])
-(27)
+},{}]},{},["./scripts/gibber/graphics.lib.js"])("./scripts/gibber/graphics.lib.js")
 });
