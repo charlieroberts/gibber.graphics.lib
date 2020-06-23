@@ -194,7 +194,6 @@ var processArgs = function( args, type, shape ) {
       properties: { color: new THREE.Color( 0xff0000 ) },
       init: function( obj ) {
         obj = obj || {}
-        console.log( obj.color )
         obj.color = typeof obj.color === 'string' ? new THREE.Color( Color(obj.color).hexString() ) : shaders.Colorify.properties.color
         
         var shader = new THREE.ShaderPass( THREE.ColorifyShader )
@@ -213,12 +212,16 @@ var processArgs = function( args, type, shape ) {
         var columnV = null, columnF = null, out = null, shader = null
         if( fragment && typeof fragment === 'object' ) {
           columnF  = fragment
-          fragment = Gibber.Graphics.PostProcessing.defs + columnF.value
+          fragment = PP.defs + columnF.value
+        }else{
+          fragment = PP.defs + fragment
         }
 				
         if( vertex && typeof vertex === 'object' ) {
           columnV = vertex
           vertex = columnV.value
+        }else if( vertex ) {
+          vertex = Gibber.Graphics.PostProcessing.defs + vertex
         }
         
         shader = Gibber.Graphics.Shaders.make( fragment, vertex )
@@ -250,9 +253,10 @@ var PP = {
   isRunning : false,
   defs: [
     "#define PI 3.14159265358979323846264",
-    "float rand(vec2 co){",
+    "float noise(vec2 co) {",
     "  return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);",
-    "}\n",
+    "}",
+    ""
   ].join('\n'),
   
   start: function() {
@@ -282,37 +286,39 @@ var PP = {
           }
                     
           Gibber.Graphics.running = true 
-          
+
+          var shader 
 					if( name !== 'Shader' ) {
-	          var args = Array.prototype.slice.call( arguments,0 ),
-	              shader = shaderProps.init.call( shaderProps, args )
+	          var args = Array.prototype.slice.call( arguments,0 )
+
+            shader = shaderProps.init.call( shaderProps, args )
 					}else{
 					  shader = shaderProps.init( arguments[0], arguments[1] )
           }
           
           Gibber.createProxyProperties( shader, {  } ) // call with empty object to initialize
           
-					shader.uniform = function(_name, _value, _min, _max, type ) {
-						_min = isNaN( _min ) ? 0 : _min
-						_max = isNaN( _max ) ? 1 : _max				
-						_value = isNaN( _value ) && typeof _value !== 'object' ? _min + (_max - _min) / 2 : _value
-		        
+					shader.uniform = function(_name, _value, _min, _max, type, shouldCodeGen ) {
+						_min = _min == null ? 0 : _min
+						_max = _max == null ? 1 : _max				
+						_value = _value == null ? _min + (_max - _min) / 2 : _value
+            //_value = _value == null  ||  typeof _value !== 'object' ? _min + (_max - _min) / 2 : _value
+		        shouldCodeGen = shouldCodeGen == null ? true : shouldCodeGen
+            
 						if( typeof shader.mappingProperties[ _name ] === 'undefined' ) {
 							_mappingProperties[ _name ] = shader.mappingProperties[ _name ] = {
-				        min:_min, max:_max,
+				        min:_min, max:_max, value:_value,
 				        output: Gibber.LINEAR,
 				        timescale: 'graphics',
 				      }
-						}
+            }
             
             var info = getShaderInfo( _value, type, _name ),
                 shaderType = info[0],
                 threeType  = info[1],
                 shaderString = info[2]
             
-            //console.log( "TYPE = ", shaderType, threeType )
-            
-						if( typeof shader.uniforms[ _name ] === 'undefined' && ( shader.columnF ) ) {
+						if( typeof shader.uniforms[ _name ] === 'undefined' && ( shader.columnF ) && shouldCodeGen ) {
               var text = shaderString
               text += shader.columnF.editor.getValue()
               shader.columnF.editor.setValue( text )
@@ -325,14 +331,21 @@ var PP = {
               get : function() { return shader.uniforms[_name].value },
               set : function(v){ return shader.uniforms[_name].value = v }
             })
-            Gibber.createProxyProperty( shader, _name, true )
+            // Gibber.createProxyProperty( shader, _name, true )
             
+            shader.uniforms[ _name ].value = _value
             shader[ _name ] = _value
             
+            Gibber.createProxyProperty( shader, _name, true )
             return shader
           }
-					
-          
+
+          shader.uniformNoCodeGen = function() {
+					  var args = Array.prototype.slice.call( arguments, 0 )
+            console.log( "NO CODEGEN", args[1] || null )
+            return shader.uniform( args[0], args[1] || null, args[2] || null, args[3] || null, args[4] || null, false )
+          }
+
           if( shader === null) {
             console.log( "SHADER ERROR... aborting" )
             return
@@ -367,7 +380,7 @@ var PP = {
           
           PP.defineProperties( shader )
           
-          console.log( shader, mappingProperties )
+          // console.log( shader, mappingProperties )
           
           for( var key in mappingProperties ) {
     				var prop = mappingProperties [ key ]
@@ -579,6 +592,7 @@ var getShaderInfo = function( value, type, _name ) {
       }
     }
   }else{
+    console.log( 'INSIDE ARRAY CHECK', value )
     if( Array.isArray( value ) ) {
       var arrayMember = value[ 0 ],
           arrayMemberType = arrayMember.shaderType || typeof arrayMember
@@ -599,12 +613,14 @@ var getShaderInfo = function( value, type, _name ) {
     }else{
       shaderType = typeof value
       if( shaderType === 'number' ) {
-        console.log("CHECKING FLOAT VS INT")
+        // console.log("CHECKING FLOAT VS INT")
         shaderType = value % 1 === 0 ? 'int' : 'float'
       } 
     }
   }
   
+  console.log( 'shaderInfo', isArray, isInt, shaderType ) 
+
   shaderString = "uniform " + shaderType + " " + _name
   
   shaderString += isArray ? '[' + value.length + '];\n' : ';\n'
@@ -613,8 +629,10 @@ var getShaderInfo = function( value, type, _name ) {
   if( isArray ) {
     threeType += shaderType.indexOf( 'vec' ) > - 1 ? 'v' : 'v1'
   }
-  
-  return [ shaderType, threeType, shaderString ]
+   
+  var out = [ shaderType, threeType, shaderString ]
+  // console.log( 'SHADER INFO', out )
+  return out
 }
 
 return PP

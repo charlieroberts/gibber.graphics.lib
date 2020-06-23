@@ -13,6 +13,7 @@ module.exports = function( Gibber, Graphics ) {
       camera: null,
       lights: [],
       running: false,
+      shouldReadPixels: false,
       init : function() {
         this.container = Graphics.getContainer( container )
         
@@ -39,13 +40,18 @@ module.exports = function( Gibber, Graphics ) {
         
         this.createCameras()
       },
-      
+      pixels:null,
       _update : function() {        
         if( this.initialized && this.running ) {
           this.renderer.clear()
 
           if( Graphics.PostProcessing && Graphics.PostProcessing.fx.length ) {
             Graphics.PostProcessing.composer.render()
+            var gl = this.renderer.getContext()
+            if( this.shouldReadPixels ) {
+              if( this.pixels === null ) this.pixels = new Uint8Array( this.renderer.domElement.width * this.renderer.domElement.height * 4);
+              gl.readPixels( 0, 0, this.renderer.domElement.width, this.renderer.domElement.height, gl.RGBA, gl.UNSIGNED_BYTE, this.pixels );
+            }
           }else{
             this.renderer.render( this.scene, this.camera )
           }

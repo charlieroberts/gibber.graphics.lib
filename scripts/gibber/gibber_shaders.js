@@ -214,7 +214,7 @@ var Shaders = {
 return Shaders
 
 // for( var key in Shaders ) {
-//   window[ key ] = Shaders[ key ]
+//   window[ key ] =  s[ key ]
 // }
 
 //$.extend( window, Gibber.Graphics.Geometry )

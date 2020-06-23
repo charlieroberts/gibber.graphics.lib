@@ -28,6 +28,7 @@ Graphics = {
     Graphics.PostProcessing.export( target )
     Graphics.GibberShaders.export( target )
     target.Video = Graphics.Video
+    target.ShaderMaterial = Graphics.Shaders.Material
   },
   
   getContainer: function( _container ) {
@@ -42,6 +43,7 @@ Graphics = {
   },
   
   init : function( mode, container ) { 
+    $ = Gibber.dollar
     if( mode === '3d' && !window.WebGLRenderingContext ) {
       var msg = 'Your browser does not support WebGL. 2D drawing will work, but 3D geometries and shaders are not supported.'
         

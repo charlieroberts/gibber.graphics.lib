@@ -48,8 +48,8 @@ gulp.task('watch', function() {
       .pipe( source( 'bundle.js' ) )
       .pipe( rename( 'gibber.graphics.lib.js' ) )
       .pipe( gulp.dest( './build' ) )
-      .pipe( uglify() )
-      .pipe( rename('gibber.audio.lib.min.js') )
+//      .pipe( uglify() )
+      .pipe( rename('gibber.graphics.lib.min.js') )
       .pipe( gulp.dest('./build/') )
   }
 

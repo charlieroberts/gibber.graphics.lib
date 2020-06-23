@@ -148,12 +148,12 @@ module.exports = function( Gibber, Graphics ) {
 			
       var mappingProperties = shader.mappingProperties = {
 				amp:{
-	        min:0, max:1,
+	        min:0, max:1, value:1,
 	        output: Gibber.LINEAR,
 	        timescale: 'graphics',
 	      },
 	      time:{
-	        min:0, max:1,
+	        min:0, max:1, value:0,
 	        output: Gibber.LINEAR,
 	        timescale: 'graphics',
 	      },
@@ -184,8 +184,10 @@ module.exports = function( Gibber, Graphics ) {
             shader.material.uniforms[ _name ].value = v
           },
         })
-        
+         
         Gibber.createProxyProperty( shader, _name )
+        shader.material.uniforms[ _name ].value = _value
+
         shader[  _name.charAt(0).toUpperCase() + _name.slice(1) ].timescale = 'graphics' // TODO: why is this necessary?
         
         return shader
@@ -193,7 +195,7 @@ module.exports = function( Gibber, Graphics ) {
             
       for( var key in mappingProperties ) {
         var prop = mappingProperties [ key ]
-        shader.uniform( key, prop.min, prop.max, shader[ key ] )
+        shader.uniform( key, prop.value, prop.min, prop.max )
       }
 			
 			return shader

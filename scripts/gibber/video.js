@@ -41,13 +41,15 @@ module.exports = function( Gibber, Graphics ) {
       video.width    = 320;
       video.height   = 240;
       video.autoplay = true;
+    }else{
+      console.log("NO VIDEO MADE")
     }
     
     if( _videoTexture === null ) {
       navigator.getUserMedia(
         { video:true, audio:false }, 
         function(stream){ 
-          video.stream = stream;
+          video.stream = stream.getTracks()[0];
           video.src = URL.createObjectURL( stream ); 
         }, 
         function( error ){ console.log( 'Failed to get a stream due to', error ); }
@@ -58,14 +60,16 @@ module.exports = function( Gibber, Graphics ) {
       
       _videoTexture.remove = function() {
         Graphics.graph.splice( Graphics.graph.indexOf( _videoTexture ), 1 )
+        
         _videoTexture = null
         video.stream.stop()
       }
       
       _videoTexture.stop = function() {
         Graphics.graph.splice( Graphics.graph.indexOf( _videoTexture ), 1 ) 
-        _videoTexture = null
+        
         video.stream.stop()
+        _videoTexture = null
       }
       
       _videoTexture.update = function() {}
