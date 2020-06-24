@@ -30,7 +30,8 @@ const Graphics = {
 
     // XXX we have to run this everytime we render as Marching.js
     // makes a brand new camera
-    init() {
+    init( options, __Gibber ) {
+      Gibber = Gibber
       if( Graphics.camera.initialized === true ) {
         // store current camera data
         storepos = Marching.camera.pos
@@ -54,6 +55,8 @@ const Graphics = {
       }
 
       Graphics.camera.initialized = true
+
+      return Promise.resolve( Graphics )
     }
   },
 
@@ -191,8 +194,8 @@ const Graphics = {
 
     instance.texture.tidals = wrapped.texture.tidals = []
     instance.texture.__sequencers = wrapped.texture.__sequencers = []
-    instance.texture.__id = wrapped.texture.__id = __wrapped.__id = Gibber.Gibberish.utilities.getUID()
-    Gibber.Gibberish.worklet.ugens.set( instance.texture.__id, instance.texture )
+    instance.texture.__id = wrapped.texture.__id = __wrapped.__id = Gibber.Audio.Gibberish.utilities.getUID()
+    Gibber.Audio.Gibberish.worklet.ugens.set( instance.texture.__id, instance.texture )
 
     return instance 
   },
@@ -224,7 +227,7 @@ const Graphics = {
 
       const instance = {
         __wrapped: wrapped,
-        __id: Gibber.Gibberish.utilities.getUID(),
+        __id: Gibber.Audio.Gibberish.utilities.getUID(),
         __sequencers:[],
 
         emit: wrapped.emit.bind( wrapped ),
@@ -352,8 +355,8 @@ const Graphics = {
                 )
                 instance.texture.tidals = wrapped.texture.tidals = []
                 instance.texture.__sequencers = wrapped.texture.__sequencers = []
-                instance.texture.__id = wrapped.texture.__id = __wrapped.__id = Gibber.Gibberish.utilities.getUID()
-                Gibber.Gibberish.worklet.ugens.set( instance.texture.__id, instance.texture )
+                instance.texture.__id = wrapped.texture.__id = __wrapped.__id = Gibber.Audio.Gibberish.utilities.getUID()
+                Gibber.Audio.Gibberish.worklet.ugens.set( instance.texture.__id, instance.texture )
               }
 
 
@@ -431,7 +434,7 @@ const Graphics = {
       Graphics.createProperty( instance, 'scale', 0, wrapped) 
 
       // hack to make audio sequencing work with graphical objects
-      Gibber.Gibberish.worklet.ugens.set( instance.__id, instance )
+      Gibber.Audio.Gibberish.worklet.ugens.set( instance.__id, instance )
 
       return instance
     }
@@ -486,7 +489,7 @@ const Graphics = {
           if( target === undefined && to[ name ].value.mark !== undefined ) 
             target = to[ name ].value.mark.replacedWith
 
-          Environment.codeMarkup.waveform.updateWidget( target, val, false )
+          Gibber.Environment.codeMarkup.waveform.updateWidget( target, val, false )
         }
       }else{
         // assignment hack while DOM creation is taking place,
@@ -498,7 +501,7 @@ const Graphics = {
         to[ '__'+name ].callback = t => {
           const val = gen()
           to[ name ] = val
-          Environment.codeMarkup.waveform.updateWidget( to[ '__'+name ].widget, val, false )
+          Gibber.Environment.codeMarkup.waveform.updateWidget( to[ '__'+name ].widget, val, false )
         }
       }
 
@@ -565,7 +568,7 @@ const Graphics = {
               obj[ name ].value.from = from
               obj[ name ].value.to = to
 
-              Environment.codeMarkup.waveform.updateWidget( widget, from + val * diff, false )
+              Gibber.Environment.codeMarkup.waveform.updateWidget( widget, from + val * diff, false )
             }
           }else{
             const prop = obj[ name ].__fadeObj
@@ -598,7 +601,7 @@ const Graphics = {
           key:name,
           priority:0, 
         })
-        .start( Gibber.Clock.time( delay ) )
+        .start( Gibber.Auido.Clock.time( delay ) )
 
         obj.__sequencers.push( obj[ '__'+name ][ number ] )
         // return object for method chaining
@@ -622,7 +625,7 @@ const Graphics = {
           key:name,
         })
 
-        s.start( Gibber.Clock.time( delay ) )
+        s.start( Gibber.Audio.Clock.time( delay ) )
 
         obj[ '__' + name ].sequencers[ number ] = obj[ '__' + name ][ number ] =  obj[ '__'+name].tidals[ number ] = s
 
@@ -642,8 +645,8 @@ const Graphics = {
 
       for( let i = 0; i < size; i++ ) {
         Graphics.createProperty( obj[ '__'+name ], props[ i ], wrapped[ name ][ props[i] ], wrapped[ name ] )
-        const id = obj[ '__'+name ].__id = Gibber.Gibberish.utilities.getUID()
-        Gibber.Gibberish.worklet.ugens.set( id, obj[ '__'+name ] )
+        const id = obj[ '__'+name ].__id = Gibber.Audio.Gibberish.utilities.getUID()
+        Gibber.Audio.Gibberish.worklet.ugens.set( id, obj[ '__'+name ] )
       }
     }
 
