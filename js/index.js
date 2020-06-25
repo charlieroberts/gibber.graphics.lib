@@ -5,6 +5,7 @@ let Gibber = null
 const excludeFromSequencing = ['material']
 
 const Graphics = {
+  defs: require('../defs/graphics.js'),
   canvas:null,
   ctx:null,
   quality:3,
@@ -31,7 +32,6 @@ const Graphics = {
     // XXX we have to run this everytime we render as Marching.js
     // makes a brand new camera
     init( options, __Gibber ) {
-      Gibber = Gibber
       if( Graphics.camera.initialized === true ) {
         // store current camera data
         storepos = Marching.camera.pos
@@ -76,6 +76,7 @@ const Graphics = {
 
   init( props, __Gibber ) {
     Gibber = __Gibber
+    Gibber.Graphics = this
 
     this.canvas = props.canvas || document.querySelector( 'canvas' )
     this.__native  = {}
