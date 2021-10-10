@@ -7,6 +7,8 @@
     "url": "git://github.com/charlieroberts/gibber.graphics.lib"
   },
   "dependencies": {
+    "browserify": "^16.5.2",
+    "gulp": "^4.0.2",
     "marching": "^1.0.0"
   },
   "bugs": {
@@ -24,5 +26,14 @@
     "gibber"
   ],
   "author": "Charlie Roberts <charlie@charlie-roberts.com> (http://www.charlie-roberts.com/)",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "gulp-insert": "^0.5.0",
+    "gulp-rename": "^2.0.0",
+    "gulp-uglify": "^3.0.2",
+    "gulp-util": "^3.0.8",
+    "vinyl-buffer": "^1.0.1",
+    "vinyl-source-stream": "^2.0.0",
+    "watchify": "^3.11.1"
+  }
 }
