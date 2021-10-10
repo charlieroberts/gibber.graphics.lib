@@ -92,6 +92,13 @@ module.exports = [
     }
   }
 }, 
+{ 
+  name: "postprocessing",
+  type: "postprocessing",
+  doc:  "Postprocessing effects are applied to a scene *after* it has been rendered to a 2D plane. In some cases they also uses a depth buffer, which stores the position of any object coloring a pixel on the z-axis. Common examples of postprocessing effects include color correction, motion blur, and depth of field (bokeh).",
+  methods:{},
+  properties:{}
+},
 {
   name: "geometry",
   type: "operation",
