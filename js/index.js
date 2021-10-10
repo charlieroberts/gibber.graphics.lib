@@ -17,12 +17,13 @@ const Graphics = {
   __scene:       [],
   __fogColor:    Marching.vectors.Vec3(0),
   __fogAmount:   0,
-  __background:  Marching.vectors.Vec3(0),
+  __background:  Marching.vectors.Vec4(0,0,0,1),
   __onrender:    [],
   __protomethods:['translate','scale','rotate','texture','material', 'bump'],
   __lights:[],
   __storepos:null,
   __storedir:null,
+  __postprocessing:[],
   camera : {
     pos: { x:0, y:0, z:5 },
     dir: { x:0, y:0, z:1 },
@@ -56,7 +57,6 @@ const Graphics = {
 
       Graphics.camera.initialized = true
 
-      return Promise.resolve( Graphics )
     }
   },
 
@@ -70,8 +70,10 @@ const Graphics = {
     obj.Texture  = Marching.Texture
     obj.Camera = Graphics.camera
     obj.Fog = Graphics.fog.bind( Graphics )
+    obj.Voxels = Graphics.voxels.bind( Graphics )
     obj.Background = Graphics.background.bind( Graphics )
     obj.Light = Graphics.light.bind( Graphics ) 
+    obj.Marching = Marching
   },
 
   init( props, __Gibber ) {
@@ -99,20 +101,42 @@ const Graphics = {
     for( let name in Marching.distanceDeforms) {
       this.make( name, Marching.distanceDeforms[ name ] )
     }
+
+    const fx = ['Antialias', 'BloomOld','Bloom', 'Blur', 'Contrast', 'Edge', 'Focus', 'Godrays','Hue','Invert','MotionBlur']
+    //for( let name of fx ) {
+    //  this.make( name, Marching.fx[ name ], true )
+    //}
+    this.make( 'Antialias', Marching.fx.Antialias, true )
+    this.make( 'BloomOld', Marching.fx.BloomOld, true, [ 'amount', 'threshold' ] )
+    this.make( 'Bloom', Marching.fx.Bloom, true, [ 'amount', 'threshold', 'vertical','horizontal' ] )
+    this.make( 'Blur', Marching.fx.Blur, true, [ 'amount' ] )
+    this.make( 'Edge', Marching.fx.Edge, true )
+    this.make( 'Contrast', Marching.fx.Contrast, true, ['amount'] )
+    this.make( 'Hue', Marching.fx.Hue, true, ['shift','threshold'] )
+    this.make( 'Focus', Marching.fx.Focus, true, ['depth', 'radius'] )
+    this.make( 'Godrays', Marching.fx.Godrays, true, ['decay','density','threshold','weight','color'] )
+    this.make( 'Invert', Marching.fx.Invert, true, ['threshold'] )
+    this.make( 'MotionBlur', Marching.fx.MotionBlur,true, ['amount'] )
+    //this.make( 'Bloom', Marching.fx.Bloom, true, [ 'amount', 'threshold' ] )
+
     Object.assign( this, Marching.vectors )
     Marching.export( this.__native )
 
     this.clear = () => {
       Marching.clear()
 
+      /*
       const sheet = window.document.styleSheets[ window.document.styleSheets.length - 1 ]
       if( sheet.cssRules.length > 0 ) {
         sheet.deleteRule(
           sheet.cssRules.length - 1
         )
       }
+      */
     }
     Gibber.subscribe( 'clear', this.clear )
+
+    return Promise.resolve( [Graphics,'Graphics'] )
   },
 
   run() {
@@ -123,7 +147,13 @@ const Graphics = {
     }
   },
 
-  background( color=Marching.vectors.Vec3(0) ) { Graphics.__background = color },
+  background( color=Marching.vectors.Vec4(0,0,0,1) ) { Graphics.__background = color },
+  voxels( v = .1 ) { 
+    Graphics.useVoxels = true
+    Graphics.__voxelSize = v
+    return this
+  },
+
   fog( amount=.25, color=Marching.vectors.Vec3(0), shouldRender=true) {
     this.__fogColor = color
     this.__fogAmount = amount
@@ -220,7 +250,7 @@ const Graphics = {
     return light
   }, 
 
-  make( name, op ) {
+  make( name, op, isfx = false, props = null ) {
     this[ name ] = function( ...args ) {
       // XXX do these need to be proxies? We're basically creating
       // proxies by binding the GLSL codegen functions below...
@@ -231,9 +261,9 @@ const Graphics = {
         __id: Gibber.Audio.Gibberish.utilities.getUID(),
         __sequencers:[],
 
-        emit: wrapped.emit.bind( wrapped ),
-        emit_decl: wrapped.emit_decl.bind( wrapped ),
-        update_location: wrapped.update_location.bind( wrapped ),
+        emit: wrapped.emit !== undefined  ? wrapped.emit.bind( wrapped ) : null,
+        emit_decl: wrapped.emit_decl !== undefined ? wrapped.emit_decl.bind( wrapped ) : null,
+        update_location: wrapped.update_location !== undefined ? wrapped.update_location.bind( wrapped ) : null,
 
         // XXX should this just be a proxy for the wrapped object?
         type:      wrapped.type,
@@ -264,6 +294,9 @@ const Graphics = {
           }
 
           let scene = Marching.createScene( wrapped )
+          if( Graphics.useVoxels ) {
+            scene = scene.voxel( Graphics.__voxelSize )
+          }
           if( Graphics.__fogAmount !== 0 ) {
             scene = scene.fog( Graphics.__fogAmount, Graphics.__fogColor, false )
           }
@@ -272,6 +305,11 @@ const Graphics = {
             scene = scene.light( ...Graphics.__lights )
             Graphics.__lights.length = 0
           }
+          if( Graphics.__postprocessing.length !== 0 ) {
+            scene = scene.post( ...Graphics.__postprocessing )
+            Graphics.__postprocessing.length = 0
+          }
+
           Graphics.scene = scene.render( Graphics.quality, animate !== null ? animate : Graphics.animate )
 
           Graphics.__onrender.forEach( v => v() )
@@ -291,10 +329,15 @@ const Graphics = {
         }
       }
 
-      if( wrapped.sdf !== undefined ) instance.sdf = wrapped.sdf
-      if( wrapped.a !== undefined ) instance.a = wrapped.a
-      if( wrapped.b !== undefined ) instance.b = wrapped.b
-      
+      if( isfx ) {
+        delete instance.render
+      }else{
+
+        if( wrapped.sdf !== undefined ) instance.sdf = wrapped.sdf
+        if( wrapped.a !== undefined ) instance.a = wrapped.a
+        if( wrapped.b !== undefined ) instance.b = wrapped.b
+      }
+
       // this id number is for communicating
       // with the worklet / sequencing
       let __id = wrapped.id || 0
@@ -319,7 +362,21 @@ const Graphics = {
 
       if( wrapped.upload_data !== undefined ) instance.upload_data = wrapped.upload_data.bind( wrapped )
 
-      for( let param of wrapped.__desc.parameters ) {
+      if( isfx && props !== null ) {
+        for( let param of props ) {
+
+          Graphics.createProperty( 
+            instance, 
+            param, 
+            wrapped[ param ],
+            wrapped
+          )
+
+        }
+      }
+
+     if( !isfx ) {
+       for( let param of wrapped.__desc.parameters ) {
         if( excludeFromSequencing.indexOf( param.name )  > -1 || param.name === undefined ) continue
 
         Graphics.createProperty( 
@@ -330,113 +387,116 @@ const Graphics = {
         )
 
       }
+        for( let param of Graphics.__protomethods ) {
+          if( wrapped[ param ] !== undefined ) {
+            // texture properties are dynamically created when the
+            // function is called, so we want to wait for that function
+            // call before wrapping...
+            if( param !== 'texture' && param !== 'material' ) {
+              instance[ param ] = function( ...args ) {
+                wrapped[ param ]( ...args )
 
-      for( let param of Graphics.__protomethods ) {
-        if( wrapped[ param ] !== undefined ) {
-          // texture properties are dynamically created when the
-          // function is called, so we want to wait for that function
-          // call before wrapping...
-          if( param !== 'texture' && param !== 'material' ) {
-            instance[ param ] = function( ...args ) {
-              wrapped[ param ]( ...args )
+                return instance
+              }
+            }else if( param === 'texture' ) { 
+              instance.texture = wrapped.texture = function( ...args ) {
+                const tex = typeof args[0] === 'string' ? Marching.Texture( ...args ) : args[0]
+                instance.__textureObj = wrapped.__textureObj = tex
 
-              return instance
-            }
-          }else if( param === 'texture' ) { 
-            instance.texture = wrapped.texture = function( ...args ) {
-              const tex = typeof args[0] === 'string' ? Marching.Texture( ...args ) : args[0]
-              instance.__textureObj = wrapped.__textureObj = tex
+                for( let p of tex.parameters ) {
+                  Graphics.createProperty( 
+                    instance.texture, 
+                    p.name, 
+                    tex[ p.name ],
+                    tex 
+                  )
+                  instance.texture.tidals = wrapped.texture.tidals = []
+                  instance.texture.__sequencers = wrapped.texture.__sequencers = []
+                  instance.texture.__id = wrapped.texture.__id = __wrapped.__id = Gibber.Audio.Gibberish.utilities.getUID()
+                  Gibber.Audio.Gibberish.worklet.ugens.set( instance.texture.__id, instance.texture )
+                }
 
-              for( let p of tex.parameters ) {
-                Graphics.createProperty( 
-                  instance.texture, 
-                  p.name, 
-                  tex[ p.name ],
-                  tex 
-                )
-                instance.texture.tidals = wrapped.texture.tidals = []
-                instance.texture.__sequencers = wrapped.texture.__sequencers = []
-                instance.texture.__id = wrapped.texture.__id = __wrapped.__id = Gibber.Audio.Gibberish.utilities.getUID()
-                Gibber.Audio.Gibberish.worklet.ugens.set( instance.texture.__id, instance.texture )
+
+                return instance 
+              }
+            }else{
+              const __wrapped = wrapped.material
+              instance.material = wrapped.material = function( ...args ) {
+                // check for presets and for passing a constructed material object
+                const mat = typeof args[0] !== 'string'
+                  ? args[0].type === 'material'
+                    ? args[0]               
+                    : Marching.Material( ...args )
+                  : Marching.Material[ args[0] ]
+                
+                instance.__material = wrapped.__material = Marching.materials.addMaterial( mat )
+                
+                // mmmm... how do you sequence lighting params anyways?
+                /*
+                for( let p of mat.parameters ) {
+                  Graphics.createProperty( 
+                    instance.material, 
+                    p.name, 
+                    mat[ p.name ],
+                    mat 
+                  )
+                  instance.material.tidals = wrapped.material.tidals = []
+                  instance.material.__sequencers = wrapped.material.__sequencers = []
+                  instance.material.__id = wrapped.material.__id = __wrapped.__id = Gibber.Gibberish.utilities.getUID()
+                  Gibber.Gibberish.worklet.ugens.set( instance.material.__id, instance.material )
+                }*/
+
+
+                return instance 
               }
 
-
-              return instance 
             }
-          }else{
-            const __wrapped = wrapped.material
-            instance.material = wrapped.material = function( ...args ) {
-              // check for presets and for passing a constructed material object
-              const mat = typeof args[0] !== 'string'
-                ? args[0].type === 'material'
-                  ? args[0]               
-                  : Marching.Material( ...args )
-                : Marching.Material[ args[0] ]
-              
-              instance.__material = wrapped.__material = Marching.materials.addMaterial( mat )
-              
-              // mmmm... how do you sequence lighting params anyways?
-              /*
-              for( let p of mat.parameters ) {
-                Graphics.createProperty( 
-                  instance.material, 
-                  p.name, 
-                  mat[ p.name ],
-                  mat 
-                )
-                instance.material.tidals = wrapped.material.tidals = []
-                instance.material.__sequencers = wrapped.material.__sequencers = []
-                instance.material.__id = wrapped.material.__id = __wrapped.__id = Gibber.Gibberish.utilities.getUID()
-                Gibber.Gibberish.worklet.ugens.set( instance.material.__id, instance.material )
-              }*/
-
-
-              return instance 
-            }
-
           }
         }
-      }
 
-      let rx=0,ry=0,rz=0
-      instance.rotation = {}
+        let rx=0,ry=0,rz=0
+        instance.rotation = {}
 
-      // transforms in marching.js have a __rotations array, that can
-      // be used to apply arbitrary rotations. We'll use that to separate
-      // our x,y, and z rotations so that they can be individually mapped.
-      instance.__rotation = {
-        get x() { return rx },
-        set x(v) {
-          rx = v
-          wrapped.transform.__rotations[0] = Matrix.rotate( rx, 1,0,0 )
-          wrapped.transform.dirty = true
-        },
-        get y() { return rx },
-        set y(v) {
-          ry = v
-          wrapped.transform.__rotations[1] = Matrix.rotate( ry, 0,1,0 )
-          wrapped.transform.dirty = true
-        },
-        get z() { return rx },
-        set z(v) {
-          rz = v
-          wrapped.transform.__rotations[2] = Matrix.rotate( rz, 0,0,1 )
-          wrapped.transform.dirty = true
+        // transforms in marching.js have a __rotations array, that can
+        // be used to apply arbitrary rotations. We'll use that to separate
+        // our x,y, and z rotations so that they can be individually mapped.
+        instance.__rotation = {
+          get x() { return rx },
+          set x(v) {
+            rx = v
+            wrapped.transform.__rotations[0] = Matrix.rotate( rx, 1,0,0 )
+            wrapped.transform.dirty = true
+          },
+          get y() { return rx },
+          set y(v) {
+            ry = v
+            wrapped.transform.__rotations[1] = Matrix.rotate( ry, 0,1,0 )
+            wrapped.transform.dirty = true
+          },
+          get z() { return rx },
+          set z(v) {
+            rz = v
+            wrapped.transform.__rotations[2] = Matrix.rotate( rz, 0,0,1 )
+            wrapped.transform.dirty = true
+          }
         }
+
+        Graphics.createProperty( instance, 'x', 0, wrapped.transform.translation ) 
+        Graphics.createProperty( instance, 'y', 0, wrapped.transform.translation ) 
+        Graphics.createProperty( instance, 'z', 0, wrapped.transform.translation ) 
+        Graphics.createProperty( instance.rotation, 'x', 0, instance.__rotation) 
+        Graphics.createProperty( instance.rotation, 'y', 0, instance.__rotation) 
+        Graphics.createProperty( instance.rotation, 'z', 0, instance.__rotation) 
+        Graphics.createProperty( instance.rotation, 'angle', 0, instance.__rotation ) 
+        Graphics.createProperty( instance, 'scale', 0, wrapped) 
+
       }
-
-      Graphics.createProperty( instance, 'x', 0, wrapped.transform.translation ) 
-      Graphics.createProperty( instance, 'y', 0, wrapped.transform.translation ) 
-      Graphics.createProperty( instance, 'z', 0, wrapped.transform.translation ) 
-      Graphics.createProperty( instance.rotation, 'x', 0, instance.__rotation) 
-      Graphics.createProperty( instance.rotation, 'y', 0, instance.__rotation) 
-      Graphics.createProperty( instance.rotation, 'z', 0, instance.__rotation) 
-      Graphics.createProperty( instance.rotation, 'angle', 0, instance.__rotation ) 
-      Graphics.createProperty( instance, 'scale', 0, wrapped) 
-
       // hack to make audio sequencing work with graphical objects
       Gibber.Audio.Gibberish.worklet.ugens.set( instance.__id, instance )
 
+      if( isfx ) {
+        this.__postprocessing.push( instance.__wrapped )
+      }
       return instance
     }
   },
@@ -446,8 +506,19 @@ const Graphics = {
       const f = to[ '__' + name ].follow = Follow({ input: from, bufferSize:4096 })
 
       Marching.callbacks.push( time => {
+        //console.log( f.output, f )
         if( f.output !== undefined ) {
-          to[ name ] = f.output
+          let val
+          if( Array.isArray( f.output ) ) {
+            if( f.output[1] !== undefined ) {
+              val = (f.output[0] + f.output[1]) / 2
+            }else{
+              val = f.output[0]
+            }
+          }else{
+            val = f.output
+          }
+          to[ name ] = val 
         }
       })
 
@@ -602,7 +673,7 @@ const Graphics = {
           key:name,
           priority:0, 
         })
-        .start( Gibber.Auido.Clock.time( delay ) )
+        .start( Gibber.Audio.Clock.time( delay ) )
 
         obj.__sequencers.push( obj[ '__'+name ][ number ] )
         // return object for method chaining
