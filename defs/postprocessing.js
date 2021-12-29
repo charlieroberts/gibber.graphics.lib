@@ -3,6 +3,19 @@ const optional = true,
 
 module.exports = [
   {
+    name: "Antialias",
+    prototype: "postprocessing",
+    doc: "The Antialias effect smooths jagged edges in images using the Fast Approximate Anti-Aliasing (FXAA) algortihm. The construtor accepts a numerical argument which determines the number of times the algorithm will be applied; each application requires a complete render stage so it's best to use values < 10, or even < 5.",
+    properties: {
+      repetitions: {
+        type: "int",          
+        default: 1,
+        doc: "How many times to apply the antialias effect. This property can *only be set in the constructor; it is not runtime editable.*", 
+      }
+    }
+  },
+
+  {
     name: "Bloom",
     prototype: "postprocessing",
     doc: "The Bloom effect creates blurred glow effects in areas of the scene that are brighter than a specific *threshold* property.",
