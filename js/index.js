@@ -61,7 +61,7 @@ const Graphics = {
   },
 
   export( obj ) {
-    for( key in this ) {
+    for( let key in this ) {
       if( this.__doNotExport.indexOf( key ) === -1 ) obj[ key ] = this[ key ]
     }
 
@@ -495,8 +495,9 @@ const Graphics = {
       Gibber.Audio.Gibberish.worklet.ugens.set( instance.__id, instance )
 
       if( isfx ) {
-        this.__postprocessing.push( instance.__wrapped )
+        Graphics.__postprocessing.push( instance.__wrapped )
       }
+
       return instance
     }
   },
