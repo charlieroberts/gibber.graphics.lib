@@ -7,7 +7,9 @@
     "url": "git://github.com/charlieroberts/gibber.graphics.lib"
   },
   "dependencies": {
+    "@bandaloo/merge-pass": "^0.6.4",
     "browserify": "^16.5.2",
+    "glslify": "^7.1.1",
     "gulp": "^4.0.2",
     "marching": "^1.0.0"
   },
