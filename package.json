@@ -11,7 +11,7 @@
     "browserify": "^16.5.2",
     "glslify": "^7.1.1",
     "gulp": "^4.0.2",
-    "marching": "^1.0.0"
+    "marching": "latest"
   },
   "bugs": {
     "url": "https://github.com/charlieroberts/gibber.lib/issues"
