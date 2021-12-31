@@ -1,6 +1,6 @@
 const Marching = require( 'marching' )
 
-let Gibber = null
+let Gibber = null, storepos, storedir, storerot
 
 const excludeFromSequencing = ['material']
 
